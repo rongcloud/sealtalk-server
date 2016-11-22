@@ -487,6 +487,17 @@ router.post '/set_portrait_uri', (req, res, next) ->
       .then (friends) ->
         friends.forEach (friend) ->
           Cache.del "friendship_all_#{friend.friendId}"
+     
+      GroupMember.findAll
+        where:
+          memberId: currentUserId
+          isDeleted: false
+        attributes: [
+          'groupId'
+        ]
+      .then (groupMembers) ->
+        groupMembers.forEach (groupMember) ->
+          Cache.del "group_members_#{groupMember.groupId}"
 
       res.send new APIResult 200
   .catch next
