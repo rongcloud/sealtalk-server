@@ -219,7 +219,7 @@
 
 * 200: 请求成功
 
-### GET /:friendId/profile
+### GET /friendship/:friendId/profile
 
 获取好友信息
 
