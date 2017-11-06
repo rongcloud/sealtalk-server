@@ -13,8 +13,8 @@
 | [/group/set_bulletin](#post-groupset_bulletin) | 发布群公告 |
 | [/group/set_portrait_uri](#post-groupset_portrait_uri) | 设置群头像 |
 | [/group/set_display_name](#post-groupset_display_name) | 设置群名片 |
-| [/group/:id](#post-groupid) | 获取群信息 |
-| [/group/:id/members](#post-groupidmembers) | 获取群成员 |
+| [/group/:id](#get-groupid) | 获取群信息 |
+| [/group/:id/members](#get-groupidmembers) | 获取群成员 |
 
 
 ## API 说明
