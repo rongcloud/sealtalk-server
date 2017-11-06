@@ -8,7 +8,7 @@
 | [/friendship/delete](#post-friendshipdelete) | 删除好友请求 |
 | [/friendship/set_display_name](#post-friendshipset_display_name) | 设置好友备注名 |
 | [/friendship/all](#get-friendshipall) | 获取好友列表 |
-| [/friendship/:friendId/profile](#get-friendshipfriendIdprofile) | 获取好友信息 |
+| [/friendship/:friendId/profile](#get-friendshipfriendidprofile) | 获取好友信息 |
 
 ## API 说明
 
