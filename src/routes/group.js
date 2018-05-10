@@ -73,7 +73,7 @@ sendGroupNotification = function(userId, groupId, operation, data) {
   };
   Utility.log('Sending GroupNotificationMessage:', JSON.stringify(groupNotificationMessage));
   return new Promise(function(resolve, reject) {
-    return rongCloud.message.group.publish('__system__', encodedGroupId, 'RC:GrpNtf', groupNotificationMessage, function(err, resultText) {
+    return rongCloud.message.group.publish('__system__', encodedGroupId, 'RC:GrpNtf', JSON.stringify(groupNotificationMessage), function(err, resultText) {
       if (err) {
         Utility.logError('Error: send group notification failed: %s', err);
         reject(err);
