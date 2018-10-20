@@ -292,12 +292,13 @@ router.post('/login', function(req, res, next) {
         return Utility.logError('Sync groups error: ', error);
       });
       if (user.rongCloudToken === '') {
-        if (req.app.get('env') === 'development') {
+        /**
+          if (req.app.get('env') === 'development') {
           return res.send(new APIResult(200, Utility.encodeResults({
             id: user.id,
             token: 'fake token'
           })));
-        }
+        }*/
         return getToken(user.id, user.nickname, user.portraitUri).then(function(token) {
           return res.send(new APIResult(200, Utility.encodeResults({
             id: user.id,
