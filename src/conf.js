@@ -19,6 +19,8 @@ module.exports = {
   QINIU_BUCKET_NAME: '<-- 此处填写七牛创建的空间名称 -->',
   // 七牛创建的空间域名，请访问七牛开发者后台：https://portal.qiniu.com
   QINIU_BUCKET_DOMAIN: '<-- 此处填写七牛创建的空间域名 -->',
+  // 云片颁发的 APi Key, 请访问云片开发者后台: https://www.yunpian.com/admin/main
+  YUNPIAN_API_KEY: '<-- 此处填写云片颁发的 Api Key -->',
   // N3D 密钥，用来加密所有的 Id 数字，不小于 5 位的字母数字组合
   N3D_KEY: '<-- 此处设置加密 Id 的密钥 -->',
   // 认证 Cookie 主域名 如果没有正式域名，请修改本地 hosts 文件配置域名
@@ -53,6 +55,11 @@ module.exports = {
   QINIU_SECRET_KEY: 'ysrYdcDrrF425QNz0sfa9RoafANC6Hni3TIVgjw5',
   QINIU_BUCKET_NAME: 'devtalk-image',
   QINIU_BUCKET_DOMAIN: '7x2gjk.com1.z0.glb.clouddn.com',
+  YUNPIAN_API_KEY: '2dv32170ead2222e524ddd21d213q',
+  YUNPIAN_SMS_HOST: 'sms.yunpian.com',
+  YUNPIAN_INTERNAL_SMS_HOST: 'us.yunpian.com',
+  YUNPIAN_SEND_SMS_URI: '/v2/sms/tpl_single_send.json',
+  YUNPIAN_GET_TPL_URI: '/v2/tpl/get.json',
   N3D_KEY: '11EdDIaqpcim',
   AUTH_COOKIE_DOMAIN: 'devtalk.im',
   CORS_HOSTS: 'http://web.devtalk.im',

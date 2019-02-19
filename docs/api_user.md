@@ -63,6 +63,44 @@
 * 400: 错误的请求
 * 500: 应用服务器内部错误
 
+### POST /user/send_code_yp
+
+向手机发送验证码(使用云片服务)
+
+#### 请求参数
+
+```
+{
+  "region": 86,
+  "phone": 13912345678
+}
+```
+
+* region: 国际电话区号
+* phone: 手机号
+
+#### 返回结果
+
+正常返回，返回的 HTTP Status Code 为 200，返回的内容如下：
+
+```
+{
+  "code": 200
+}
+```
+
+返回码说明：
+
+* 200: 发送成功
+* 5000: 发送失败，超过频率限制
+
+异常返回，返回的 HTTP Status Code 如下：
+
+* 400: 错误的请求
+* 500: 应用服务器内部错误
+
+其他错误码详见: [云片短信错误码汇总](./error_sendcode_yp.md)
+
 ### POST /user/verify_code
 
 验证验证码。
@@ -80,6 +118,50 @@
 * region: 国际电话区号
 * phone: 手机号
 * code: 验证码，由 /user/send_code 方法发送到手机上
+
+#### 返回结果
+
+正常返回，返回的 HTTP Status Code 为 200，返回的内容如下：
+
+```
+{
+  "code": 200,
+  "result": {
+    "verification_token": "75dd0f90-9b0d-11e5-803f-59b82644bc50"
+  }
+}
+```
+
+* verification_token: 校验 Token
+
+返回码说明：
+
+* 200: 验证成功
+* 1000: 验证码错误
+* 2000: 验证码过期
+
+异常返回，返回的 HTTP Status Code 如下：
+
+* 400: 错误的请求
+* 500: 应用服务器内部错误
+
+### POST /user/verify_code_yp
+
+验证验证码。
+
+#### 请求参数
+
+```
+{
+  "region": 86,
+  "phone": 13912345678,
+  "code": '1234'
+}
+```
+
+* region: 国际电话区号
+* phone: 手机号
+* code: 验证码，由 /user/send_code_yp 方法发送到手机上
 
 #### 返回结果
 
