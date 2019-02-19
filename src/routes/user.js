@@ -54,7 +54,6 @@ regionMap = {
   '86': 'zh-CN'
 };
 
-// TODO 待简化  TODO 各种时间需要拆除到配置内
 var ViolationControl = {
   getDefaultVerifi: function() {
     return {
@@ -290,7 +289,9 @@ router.post('/check_phone_available', function(req, res, next) {
   var phone, region;
   region = req.body.region;
   phone = req.body.phone;
-  if (!validator.isMobilePhone(phone.toString(), regionMap[region])) {
+  var regionName = regionMap[region];
+  // 此处只使用已有国家验证方式, 其他通过 sendCode 验证, sendCode 不通过则返回错误码 3102
+  if (regionName && !validator.isMobilePhone(phone.toString(), regionName)) {
     return res.status(400).send('Invalid region and phone number.');
   }
   return User.checkPhoneAvailable(region, phone).then(function(result) {
