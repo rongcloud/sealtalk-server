@@ -1,5 +1,11 @@
 var APIResult, Blacklist, Cache, Config, DataVersion, Friendship, Group, GroupMember, GroupSync, LoginLog, MAX_GROUP_MEMBER_COUNT, NICKNAME_MAX_LENGTH, NICKNAME_MIN_LENGTH, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, PORTRAIT_URI_MAX_LENGTH, PORTRAIT_URI_MIN_LENGTH, Session, User, Utility, VerificationCode, _, co, express, getToken, moment, qiniu, ref, regionMap, rongCloud, router, sequelize, validator;
 
+var YunPianSMS = require('../util/sms.js'),
+  sendYunPianCode = YunPianSMS.sendCode,
+  YunPianErrorCodeMap = YunPianSMS.ErrorCodeMap,
+  getClientIp = require('../util/util.js').getClientIp,
+  formatRegion = require('../util/util.js').formatRegion;
+
 express = require('express');
 
 co = require('co');
@@ -22,7 +28,7 @@ Utility = require('../util/util').Utility;
 
 APIResult = require('../util/util').APIResult;
 
-ref = require('../db'), sequelize = ref[0], User = ref[1], Blacklist = ref[2], Friendship = ref[3], Group = ref[4], GroupMember = ref[5], GroupSync = ref[6], DataVersion = ref[7], VerificationCode = ref[8], LoginLog = ref[9];
+ref = require('../db'), sequelize = ref[0], User = ref[1], Blacklist = ref[2], Friendship = ref[3], Group = ref[4], GroupMember = ref[5], GroupSync = ref[6], DataVersion = ref[7], VerificationCode = ref[8], LoginLog = ref[9], VerificationViolation = ref[10];
 
 MAX_GROUP_MEMBER_COUNT = 500;
 
@@ -46,6 +52,55 @@ validator = sequelize.Validator;
 
 regionMap = {
   '86': 'zh-CN'
+};
+
+// TODO 待简化  TODO 各种时间需要拆除到配置内
+var ViolationControl = {
+  getDefaultVerifi: function() {
+    return {
+      time: Date.now(),
+      count: 0
+    };
+  },
+  LimitedTime: 1 || Config.YUNPIAN_LIMITED_TIME, // 限制小时
+  LimitedCount: 10 || Config.YUNPIAN_LIMITED_COUNT, // 限制次数
+  check: function (ip) {
+    return new Promise(function (resolve, reject) {
+      VerificationViolation.findOne({
+        where: {
+          ip: ip
+        },
+        attributes: ['time', 'count']
+      }).then(function (verification) {
+        verification = verification ? verification.dataValues : ViolationControl.getDefaultVerifi();
+        var violationCount = verification.count;
+        var sendInterval = moment().subtract(ViolationControl.LimitedTime, 'h'); // 对时间的限制
+        var beyondLimit = violationCount > ViolationControl.LimitedCount;
+        if (sendInterval.isBefore(verification.time) && beyondLimit) {
+          return reject(YunPianErrorCodeMap.violation);
+        }
+        resolve();
+      });
+    });
+  },
+  update: function (ip) {
+    return VerificationViolation.findOne({
+      where: {
+        ip: ip
+      },
+      attributes: ['time', 'count']
+    }).then(function (verification) {
+      verification = verification ? verification.dataValues : ViolationControl.getDefaultVerifi();
+      verification.ip = ip;
+      var sendInterval = moment().subtract(ViolationControl.LimitedTime, 'h'); // 对时间的限制
+      if (!sendInterval.isBefore(verification.time)) {
+        verification.time = Date.now();
+        verification.count = 0;
+      }
+      verification.count += 1;
+      return VerificationViolation.upsert(verification);
+    });
+  }
 };
 
 getToken = function(userId, nickname, portraitUri) {
@@ -125,6 +180,43 @@ router.post('/send_code', function(req, res, next) {
   })["catch"](next);
 });
 
+router.post('/send_code_yp', function(req, res, next) {
+  var phone = req.body.phone,
+    region = req.body.region,
+    ip = getClientIp(req),
+    isDevelopment = req.app.get('env') === 'development';
+  region = formatRegion(region);
+  var newVerification = { phone: phone, region: region, sessionId: '' };
+  return VerificationCode.getByPhone(region, phone).then(function(verification) {
+    if (verification) {
+      var timeDiff = Math.floor((Date.now() - verification.updatedAt.getTime()) / 1000);
+      var momentNow = moment();
+      var subtraction = isDevelopment ? momentNow.subtract(5, 's') : momentNow.subtract(1, 'm');
+      if (subtraction.isBefore(verification.updatedAt)) {
+        return res.send(new APIResult(5000, null, 'Throttle limit exceeded.'));
+      }
+    }
+    if (isDevelopment) {
+      return VerificationCode.upsert(newVerification).then(function() {
+        return res.send(new APIResult(200));
+      });
+    }
+    ViolationControl.check(ip)
+      .then(function () {
+        return sendYunPianCode(region, phone);
+      })
+      .then(function (result) {
+        newVerification.sessionId = result.sessionId;
+        return VerificationCode.upsert(newVerification).then(function() {
+          ViolationControl.update(ip);
+          return res.send(new APIResult(200));
+        });
+      }, function (err) {
+        res.send(new APIResult(err.code, err, err.msg));
+      });
+  })["catch"](next);
+});
+
 router.post('/verify_code', function(req, res, next) {
   var code, phone, region;
   phone = req.body.phone;
@@ -162,6 +254,34 @@ router.post('/verify_code', function(req, res, next) {
           return res.send(new APIResult(1000, null, 'Invalid verification code.'));
         }
       });
+    }
+  })["catch"](next);
+});
+
+router.post('/verify_code_yp', function(req, res, next) {
+  var phone = req.body.phone,
+    region = req.body.region,
+    code = req.body.code,
+    isDevelopment = req.app.get('env') === 'development';
+  region = formatRegion(region);
+  return VerificationCode.getByPhone(region, phone).then(function(verification) {
+    if (!verification) {
+      return res.status(404).send('Unknown phone number.');
+    } else if (moment().subtract(2, 'm').isAfter(verification.updatedAt)) {
+      console.log(verification.updatedAt);
+      return res.send(new APIResult(2000, null, 'Verification code expired.'));
+    } else if (isDevelopment && code === '9999') {
+      return res.send(new APIResult(200, {
+        verification_token: verification.token
+      }));
+    }
+    var success = verification.sessionId == code;
+    if (success) {
+      return res.send(new APIResult(200, {
+        verification_token: verification.token
+      }));
+    } else {
+      return res.send(new APIResult(1000, null, 'Invalid verification code.'));
     }
   })["catch"](next);
 });

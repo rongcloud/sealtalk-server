@@ -1,4 +1,4 @@
-var Blacklist, Config, DataVersion, Friendship, GROUP_CREATOR, GROUP_MEMBER, Group, GroupMember, GroupSync, HTTPError, LoginLog, Sequelize, User, Utility, VerificationCode, _, co, dataVersionClassMethods, friendshipClassMethods, groupClassMethods, groupMemberClassMethods, sequelize, userClassMethods, verificationCodeClassMethods;
+var Blacklist, Config, DataVersion, Friendship, GROUP_CREATOR, GROUP_MEMBER, Group, GroupMember, GroupSync, HTTPError, LoginLog, Sequelize, User, Utility, VerificationCode, VerificationViolation, _, co, dataVersionClassMethods, friendshipClassMethods, groupClassMethods, groupMemberClassMethods, sequelize, userClassMethods, verificationCodeClassMethods;
 
 Sequelize = require('sequelize');
 
@@ -612,6 +612,24 @@ VerificationCode = sequelize.define('verification_codes', {
   ]
 });
 
+
+VerificationViolation = sequelize.define('verification_violations', {
+  ip: {
+    type: Sequelize.STRING,
+    allowNull: false,
+    primaryKey: true
+  },
+  time: {
+    type: Sequelize.DATE,
+    allowNull: false
+  },
+  count: {
+    type: Sequelize.INTEGER.UNSIGNED
+  }
+}, {
+  timestamps: false
+});
+
 LoginLog = sequelize.define('login_logs', {
   id: {
     type: Sequelize.INTEGER.UNSIGNED,
@@ -651,4 +669,4 @@ LoginLog = sequelize.define('login_logs', {
   updatedAt: false
 });
 
-module.exports = [sequelize, User, Blacklist, Friendship, Group, GroupMember, GroupSync, DataVersion, VerificationCode, LoginLog];
+module.exports = [sequelize, User, Blacklist, Friendship, Group, GroupMember, GroupSync, DataVersion, VerificationCode, LoginLog, VerificationViolation];

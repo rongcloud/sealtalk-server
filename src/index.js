@@ -47,7 +47,7 @@ app.use(bodyParser.json());
 authentication = function(req, res, next) {
   var body, currentUserId, i, len, ref, reqPath, userAgent;
   userAgent = req.get('user-agent').substr(0, 50);
-  ref = ['/misc/demo_square', '/misc/latest_update', '/misc/client_version', '/user/login', '/user/register', '/user/reset_password', '/user/send_code', '/user/verify_code', '/user/get_sms_img_code', '/user/check_username_available', '/user/check_phone_available'];
+  ref = ['/misc/demo_square', '/misc/latest_update', '/misc/client_version', '/user/login', '/user/register', '/user/reset_password', '/user/send_code', '/user/send_code_yp', '/user/verify_code', '/user/verify_code_yp', '/user/get_sms_img_code', '/user/check_username_available', '/user/check_phone_available'];
   for (i = 0, len = ref.length; i < len; i++) {
     reqPath = ref[i];
     if (req.path === reqPath) {
