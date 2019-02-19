@@ -3,7 +3,9 @@
 | 接口地址 | 说明 |
 |---------|-----|
 | [/user/send_code](#post-usersend_code) | 向手机发送验证码 |
+| [/user/send_code_yp](#post-usersend_code_yp) | 向手机发送验证码(云片服务) |
 | [/user/verify_code](#post-userverify_code) | 验证验证码 |
+| [/user/verify_code_yp](#post-userverify_code_yp) | 验证验证码(云片服务) |
 | [/user/check_phone_available](#post-usercheck_phone_available) | 检查手机号是否可以注册 |
 | [/user/register](#post-userregister) | 注册新用户 |
 | [/user/login](#post-userlogin) | 用户登录 |
