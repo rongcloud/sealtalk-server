@@ -3,7 +3,10 @@
  */
 var request = require('http').request,
   qs = require('querystring'),
-  _ = require('underscore');
+  _ = require('underscore'),
+  path = require('path'),
+  fs = require('fs'),
+  moment = require('moment');
 
 var Config = require('../conf.js'),
   apikey = Config.YUNPIAN_API_KEY,
@@ -13,6 +16,16 @@ var Config = require('../conf.js'),
   getSmsTplUrl = Config.YUNPIAN_GET_TPL_URI || '/v2/tpl/get.json',
   tplValueKey = '#code#',
   chineseRegion = '86';
+
+var SmsTempCache = {
+  list: [],
+  time: null
+};
+
+var utils = require('./util.js');
+var Utility = utils.Utility;
+
+var regionListFile = path.join(__dirname, '..', 'region.json');
 
 var ErrorCodeMap = {
   ypServerFailed: {
@@ -79,6 +92,7 @@ var post = function (url, content, region) {
   return new Promise(function (resolve, reject) {
     var req = request(options, function (res) {
       res.setEncoding('utf8');
+
       res.on('data', function (resultText) {
         try {
           var result = JSON.parse(resultText);
@@ -93,6 +107,50 @@ var post = function (url, content, region) {
     });
     req.write(body);
     req.end();
+  });
+};
+
+var getSmsTplList = function (region) {
+  var tplTime = SmsTempCache.time;
+  var tplInterval = moment().subtract(1, 'h'); // 一小时后更新
+
+  var isExpired = !tplInterval.isBefore(tplTime);
+  var isUpgrade = isExpired || !SmsTempCache.list.length;
+
+  return new Promise(function (resolve, reject) {
+
+    if (!isUpgrade) {
+      return resolve(SmsTempCache.list);
+    }
+
+    var content = {
+      apikey: apikey
+    };
+    // Utility.log('YunPian GetSMDTpl: %j', region);
+    post(getSmsTplUrl, content, region).then(function (tempList) {
+
+      if (!_.isArray(tempList)) {
+        // Utility.log('YunPian GetSMDTpl result: %j', ErrorCodeMap.tplFailed.msg);
+        return reject(ErrorCodeMap.tplFailed);
+      }
+      // Utility.log('YunPian GetSMDTpl result: %j', tempList.length);
+
+      var isEmptyTemp = !tempList.length;
+
+      if (isEmptyTemp) {
+        return reject(ErrorCodeMap.tplEmpty);
+      }
+
+      SmsTempCache = {
+        list: tempList,
+        time: Date.now()
+      };
+
+      resolve(tempList);
+
+    }, function () {
+      reject(ErrorCodeMap.ypServerFailed)
+    });
   });
 };
 
@@ -111,6 +169,7 @@ var getTplIdByList = function (list, region) {
   var tplListLength = regionTplList.length;
   var tpl = tplListLength ? regionTplList[tplListLength - 1] : {};
   tpl = tpl || {};
+
   return tpl.tpl_id;
 };
 
@@ -119,23 +178,11 @@ var getTplIdByList = function (list, region) {
  * 实现: 先从云片服务器拿取模板列表, 再根据地区匹配对应模板
  */
 var getSmsTplId = function (region) {
-  var content = {
-    apikey: apikey
-  };
   return new Promise(function (resolve, reject) {
-    post(getSmsTplUrl, content, region).then(function (tempList) {
-      if (!_.isArray(tempList)) {
-        return reject(ErrorCodeMap.tplFailed);
-      }
-      var isEmptyTemp = !tempList.length;
-      if (isEmptyTemp) {
-        return reject(ErrorCodeMap.tplEmpty);
-      }
+    getSmsTplList(region).then(function (tempList) {
       var tplId = getTplIdByList(tempList, region);
       tplId ? resolve(tplId) : reject(ErrorCodeMap.tplFailed);
-    }, function () {
-      reject(ErrorCodeMap.ypServerFailed);
-    });
+    }, reject);
   });
 };
 
@@ -153,9 +200,12 @@ var sendCode = function (region, phone) {
       tpl_value: qs.stringify(tplValue)
     };
     return new Promise(function (resolve, reject) {
+      // Utility.log('YunPian Send: %j', [ content.tpl_id, content.mobile, region, content.tpl_value ].join(' '));
       post(sendSmsUri, content, region).then(function (result) {
         result = result || {};
-        if (result.code === 0) { // 云片 0 为调用成功
+        // Utility.log('YunPian Send result: %j', result.code);
+
+        if (result.code == 0) { // 云片 0 为调用成功
           result.sessionId = code;
           resolve(result);
         } else if (result.code) {
@@ -175,7 +225,24 @@ var sendCode = function (region, phone) {
   });
 };
 
+var getRegionList = function () {
+  return new Promise(function (resolve, reject) {
+    var regionList = fs.readFileSync(regionListFile, 'utf8');
+
+    try {
+      regionList = JSON.parse(regionList);
+    } catch(e) {
+      reject();
+    }
+
+    utils.isArray(regionList) ? resolve(regionList) : reject();
+  });
+};
+
+
+
 module.exports = {
   sendCode,
-  ErrorCodeMap
+  ErrorCodeMap,
+  getRegionList
 };

@@ -226,13 +226,27 @@ var formatRegion = function (region) {
   return region;
 };
 
+var isString = function (str) {
+  return Object.prototype.toString.call(str) === '[object String]';
+};
 
-module.exports.Utility = Utility;
+var isObject = function (obj) {
+  return Object.prototype.toString.call(obj) === '[object Object]';
+};
 
-module.exports.APIResult = APIResult;
+var isArray = function (obj) {
+  return Object.prototype.toString.call(obj) === '[object Array]';
+};
 
-module.exports.HTTPError = HTTPError;
+module.exports = {
+  Utility,
+  APIResult,
+  HTTPError,
 
-module.exports.getClientIp = getClientIp;
+  getClientIp,
+  formatRegion,
 
-module.exports.formatRegion = formatRegion;
+  isString,
+  isObject,
+  isArray
+};
