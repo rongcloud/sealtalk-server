@@ -1,10 +1,14 @@
 var APIResult, Blacklist, Cache, Config, DataVersion, Friendship, Group, GroupMember, GroupSync, LoginLog, MAX_GROUP_MEMBER_COUNT, NICKNAME_MAX_LENGTH, NICKNAME_MIN_LENGTH, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, PORTRAIT_URI_MAX_LENGTH, PORTRAIT_URI_MIN_LENGTH, Session, User, Utility, VerificationCode, _, co, express, getToken, moment, qiniu, ref, regionMap, rongCloud, router, sequelize, validator;
 
+var utils = require('../util/util.js');
+
 var YunPianSMS = require('../util/sms.js'),
   sendYunPianCode = YunPianSMS.sendCode,
   YunPianErrorCodeMap = YunPianSMS.ErrorCodeMap,
-  getClientIp = require('../util/util.js').getClientIp,
-  formatRegion = require('../util/util.js').formatRegion;
+  getClientIp = utils.getClientIp,
+  formatRegion = utils.formatRegion;
+
+var regionListCache;
 
 express = require('express');
 
@@ -61,8 +65,8 @@ var ViolationControl = {
       count: 0
     };
   },
-  LimitedTime: 1 || Config.YUNPIAN_LIMITED_TIME, // 限制小时
-  LimitedCount: 10 || Config.YUNPIAN_LIMITED_COUNT, // 限制次数
+  LimitedTime: Config.YUNPIAN_LIMITED_TIME || 1, // 限制小时
+  LimitedCount: Config.YUNPIAN_LIMITED_COUNT || 20, // 限制次数
   check: function (ip) {
     return new Promise(function (resolve, reject) {
       VerificationViolation.findOne({
@@ -74,7 +78,7 @@ var ViolationControl = {
         verification = verification ? verification.dataValues : ViolationControl.getDefaultVerifi();
         var violationCount = verification.count;
         var sendInterval = moment().subtract(ViolationControl.LimitedTime, 'h'); // 对时间的限制
-        var beyondLimit = violationCount > ViolationControl.LimitedCount;
+        var beyondLimit = violationCount >= ViolationControl.LimitedCount;
         if (sendInterval.isBefore(verification.time) && beyondLimit) {
           return reject(YunPianErrorCodeMap.violation);
         }
@@ -207,8 +211,10 @@ router.post('/send_code_yp', function(req, res, next) {
       .then(function (result) {
         newVerification.sessionId = result.sessionId;
         return VerificationCode.upsert(newVerification).then(function() {
+          console.log('send success');
+          res.send(new APIResult(200));
           ViolationControl.update(ip);
-          return res.send(new APIResult(200));
+          return;
         });
       }, function (err) {
         res.send(new APIResult(err.code, err, err.msg));
@@ -267,7 +273,6 @@ router.post('/verify_code_yp', function(req, res, next) {
     if (!verification) {
       return res.status(404).send('Unknown phone number.');
     } else if (moment().subtract(2, 'm').isAfter(verification.updatedAt)) {
-      console.log(verification.updatedAt);
       return res.send(new APIResult(2000, null, 'Verification code expired.'));
     } else if (isDevelopment && code === '9999') {
       return res.send(new APIResult(200, {
@@ -283,6 +288,20 @@ router.post('/verify_code_yp', function(req, res, next) {
       return res.send(new APIResult(1000, null, 'Invalid verification code.'));
     }
   })["catch"](next);
+});
+
+router.get('/regionlist', function (req, res, next) {
+  
+  if (regionListCache && utils.isArray(regionListCache)) {
+    return res.send(new APIResult(200, regionListCache));
+  }
+
+  YunPianSMS.getRegionList().then(function (regionList) {
+    regionListCache = regionList;
+    return res.send(new APIResult(200, regionList));
+  }, function (err) {
+    res.send(new APIResult(1000, null, 'Invalid region list.'));
+  })["catch"](next);;
 });
 
 router.post('/check_phone_available', function(req, res, next) {
@@ -363,7 +382,8 @@ router.post('/login', function(req, res, next) {
   region = req.body.region;
   phone = req.body.phone;
   password = req.body.password;
-  if (!validator.isMobilePhone(phone, regionMap[region])) {
+  var regionName = regionMap[region];
+  if (regionName && !validator.isMobilePhone(phone, regionName)) {
     return res.status(400).send('Invalid region and phone number.');
   }
   return User.findOne({
@@ -1030,7 +1050,8 @@ router.get('/find/:region/:phone', function(req, res, next) {
   var phone, region;
   region = req.params.region;
   phone = req.params.phone;
-  if (!validator.isMobilePhone(phone, regionMap[region])) {
+  var regionName = regionMap[region];
+  if (regionName && !validator.isMobilePhone(phone, regionName)) {
     return res.status(400).send('Invalid region and phone number.');
   }
   return User.findOne({

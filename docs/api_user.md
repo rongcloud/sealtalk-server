@@ -6,6 +6,7 @@
 | [/user/send_code_yp](#post-usersend_code_yp) | 向手机发送验证码(云片服务) |
 | [/user/verify_code](#post-userverify_code) | 验证验证码 |
 | [/user/verify_code_yp](#post-userverify_code_yp) | 验证验证码(云片服务) |
+| [/user/regionlist](#get-userregionlist) | 获取所有区域信息 |
 | [/user/check_phone_available](#post-usercheck_phone_available) | 检查手机号是否可以注册 |
 | [/user/register](#post-userregister) | 注册新用户 |
 | [/user/login](#post-userlogin) | 用户登录 |
@@ -190,6 +191,50 @@
 
 * 400: 错误的请求
 * 500: 应用服务器内部错误
+
+### GET /user/regionlist
+
+获取所有区域信息。
+
+#### 返回结果
+
+正常返回，返回的 HTTP Status Code 为 200，返回的内容如下：
+
+```
+{
+  "code": 200,
+  "result": [
+    {
+      "region": "1",
+      "locale": {
+        "en": "Canada",
+        "zh": "加拿大"
+      }
+    },
+    {
+      "region": "7",
+      "locale": {
+        "en": "Kazakhstan",
+        "zh": "哈萨克"
+      }
+    }
+  ]
+}
+```
+
+* region: 区号
+* locale: 多语言, 目前只包含中文和英文
+
+返回码说明：
+
+* 200: 验证成功
+* 1000: 区域信息错误
+
+异常返回，返回的 HTTP Status Code 如下：
+
+* 400: 错误的请求
+* 500: 应用服务器内部错误
+
 
 ### POST /user/check_phone_available
 
