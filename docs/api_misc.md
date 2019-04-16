@@ -2,9 +2,9 @@
 
 | 接口地址 | 说明 |
 |---------|-----| 
-| [/misc/latest_update](#get-misclatest_update) | 注册新用户 |
-| [/misc/client_version](#get-miscclient_version) | 用户登录 |
-| [/misc/send_message](#post-miscsend_message) | 通过手机验证码设置新密码 |
+| [/misc/latest_update](#get-misclatest_update) | 获取桌面端最新版本 |
+| [/misc/client_version](#get-miscclient_version) | 获取移动端版本信息 |
+| [/misc/send_message](#post-miscsend_message) | Server API 发送消息 |
 
 ## API 说明
 
