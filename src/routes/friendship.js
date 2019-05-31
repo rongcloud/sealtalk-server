@@ -57,7 +57,7 @@ sendContactNotification = function(userId, nickname, friendId, operation, messag
     }
   };
   Utility.log('Sending ContactNotificationMessage:', JSON.stringify(contactNotificationMessage));
-  return rongCloud.message.system.publish(encodedUserId, [encodedFriendId], 'RC:ContactNtf', contactNotificationMessage, function(err, resultText) {
+  return rongCloud.message.system.publish(encodedUserId, [encodedFriendId], 'RC:ContactNtf', JSON.stringify(contactNotificationMessage), function(err, resultText) {
     if (err) {
       return Utility.logError('Error: send contact notification failed: %j', err);
     }
