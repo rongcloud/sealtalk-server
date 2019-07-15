@@ -18,6 +18,8 @@ APIResult = require('../util/util').APIResult;
 
 ref = require('../db'), sequelize = ref[0], User = ref[1], Blacklist = ref[2], Friendship = ref[3], Group = ref[4], GroupMember = ref[5], GroupSync = ref[6], DataVersion = ref[7], VerificationCode = ref[8], LoginLog = ref[9];
 
+var addUpdateTimeToList = require('../util/util').addUpdateTimeToList;
+
 FRIENDSHIP_REQUESTING = 10;
 
 FRIENDSHIP_REQUESTED = 11;
@@ -40,7 +42,9 @@ CONTACT_OPERATION_ACCEPT_RESPONSE = 'AcceptResponse';
 
 CONTACT_OPERATION_REQUEST = 'Request';
 
-rongCloud.init(Config.RONGCLOUD_APP_KEY, Config.RONGCLOUD_APP_SECRET);
+rongCloud.init(Config.RONGCLOUD_APP_KEY, Config.RONGCLOUD_APP_SECRET, {
+  api: Config.RONGCLOUD_API_URL
+});
 
 sendContactNotification = function(userId, nickname, friendId, operation, message, timestamp) {
   var contactNotificationMessage, encodedFriendId, encodedUserId;
@@ -56,8 +60,9 @@ sendContactNotification = function(userId, nickname, friendId, operation, messag
       version: timestamp
     }
   };
+  contactNotificationMessage = JSON.stringify(contactNotificationMessage);
   Utility.log('Sending ContactNotificationMessage:', JSON.stringify(contactNotificationMessage));
-  return rongCloud.message.system.publish(encodedUserId, [encodedFriendId], 'RC:ContactNtf', JSON.stringify(contactNotificationMessage), function(err, resultText) {
+  return rongCloud.message.system.publish(encodedUserId, [encodedFriendId], 'ST:ContactNtf', contactNotificationMessage, function(err, resultText) {
     if (err) {
       return Utility.logError('Error: send contact notification failed: %j', err);
     }
@@ -358,6 +363,7 @@ router.post('/set_display_name', function(req, res, next) {
     }
     return DataVersion.updateFriendshipVersion(currentUserId, timestamp).then(function() {
       Cache.del("friendship_profile_displayName_" + currentUserId + "_" + friendId);
+      Cache.del("friendship_all_" + currentUserId);
       return res.send(new APIResult(200));
     });
   })["catch"](next);
@@ -382,6 +388,7 @@ router.get('/all', function(req, res, next) {
       }).then(function(friends) {
         var results;
         results = Utility.encodeResults(friends, [['user', 'id']]);
+        results = addUpdateTimeToList(results);
         Cache.set("friendship_all_" + currentUserId, results);
         return res.send(new APIResult(200, results));
       });
@@ -395,36 +402,26 @@ router.get('/:friendId/profile', function(req, res, next) {
   friendId = Utility.decodeIds(friendId);
   currentUserId = Session.getCurrentUserId(req);
   return Cache.get("friendship_profile_displayName_" + currentUserId + "_" + friendId).then(function(displayName) {
-    return Cache.get("friendship_profile_user_" + currentUserId + "_" + friendId).then(function(profile) {
-      var results;
-      if (displayName && profile) {
-        results = {
-          displayName: displayName,
-          user: profile
-        };
-        return res.send(new APIResult(200, results));
-      } else {
-        return Friendship.findOne({
-          where: {
-            userId: currentUserId,
-            friendId: friendId,
-            status: FRIENDSHIP_AGREED
-          },
-          attributes: ['displayName'],
-          include: {
-            model: User,
-            attributes: ['id', 'nickname', 'region', 'phone', 'portraitUri']
-          }
-        }).then(function(friend) {
-          if (!friend) {
-            return res.status(403).send("Current user is not friend of user " + currentUserId + ".");
-          }
-          results = Utility.encodeResults(friend, [['user', 'id']]);
-          Cache.set("friendship_profile_displayName_" + currentUserId + "_" + friendId, results.displayName);
-          Cache.set("friendship_profile_user_" + currentUserId + "_" + friendId, results.user);
-          return res.send(new APIResult(200, results));
-        });
+    return Friendship.findOne({
+      where: {
+        userId: currentUserId,
+        friendId: friendId,
+        status: FRIENDSHIP_AGREED
+      },
+      attributes: ['displayName'],
+      include: {
+        model: User,
+        attributes: ['id', 'nickname', 'region', 'phone', 'portraitUri', 'createdAt', 'updatedAt']
       }
+    }).then(function (friend) {
+      if (!friend) {
+        return res.status(403).send("Current user is not friend of user " + currentUserId + ".");
+      }
+      results = Utility.encodeResults(friend, [['user', 'id']]);
+      results.user = addUpdateTimeToList([results.user])[0];
+      Cache.set("friendship_profile_displayName_" + currentUserId + "_" + friendId, results.displayName);
+      Cache.set("friendship_profile_user_" + currentUserId + "_" + friendId, results.user);
+      return res.send(new APIResult(200, results));
     });
   })["catch"](next);
 });

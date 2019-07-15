@@ -56,6 +56,17 @@ Utility = (function() {
     return sha1.digest('hex');
   };
 
+  Utility.getFromArrayById = function (array, id, key) {
+    var item = array.filter(function (obj) {
+      var objId = key ? obj[key] : obj.id;
+      return objId === id;
+    });
+    if (!item || !item.length) {
+      return;
+    }
+    return item[0];
+  };
+
   Utility.random = function(min, max) {
     return Math.floor(Math.random() * (max - min)) + min;
   };
@@ -85,6 +96,11 @@ Utility = (function() {
   Utility.encodeId = function(str) {
     return Utility.numberToString(str);
   };
+  Utility.encodeIds = function (idList) {
+    return idList.map(function (id) {
+      return Utility.encodeId(id);
+    });
+  }
 
   Utility.encodeResults = function(results, keys) {
     var isSubArrayKey, replaceKeys, retVal;
@@ -238,6 +254,32 @@ var isArray = function (obj) {
   return Object.prototype.toString.call(obj) === '[object Array]';
 };
 
+var isInt = function (number) {
+  number = parseInt(number);
+  return Object.prototype.toString.call(number) === '[object Number]' && !isNaN(number);
+};
+
+var addUpdateTimeToList = (list, options) => {
+  options = options || {};
+  var objName = options.objName,
+    updateKeys = options.updateKeys || ['updatedAt', 'createdAt'];
+  var updateKeyMap = {
+    updatedAt: 'updatedTime',
+    createdAt: 'createdTime'
+  };
+  list.forEach((item) => {
+    item = (objName ? item[objName] : item) || {};
+    updateKeys.forEach((updateKey) => {
+      var updatedData = item[updateKey];
+      if (updatedData) {
+        updateKey = updateKeyMap[updateKey] || updateKey + 'Time';
+        item[updateKey] = +new Date(updatedData);
+      }
+    });
+  });
+  return list;
+};
+
 module.exports = {
   Utility,
   APIResult,
@@ -248,5 +290,8 @@ module.exports = {
 
   isString,
   isObject,
-  isArray
+  isArray,
+  isInt,
+
+  addUpdateTimeToList
 };

@@ -1,6 +1,6 @@
 {
   "name": "sealtalk-server",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "SealTalk App Server powered by RongCloud.",
   "scripts": {
     "test": "node node_modules/istanbul/lib/cli.js cover node_modules/jasmine/bin/jasmine.js",
@@ -34,7 +34,7 @@
     "moment": "^2.10.6",
     "mysql": "^2.9.0",
     "qiniu": "^6.1.8",
-    "rongcloud-sdk": "1.0.3",
+    "rongcloud-sdk": "git+https://github.com/YongHao0/rongcloud-sdk.git",
     "semver": "^5.1.0",
     "sequelize": "^3.8.0",
     "underscore": "^1.8.3",

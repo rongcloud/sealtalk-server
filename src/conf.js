@@ -20,7 +20,7 @@ module.exports = {
   // 七牛创建的空间域名，请访问七牛开发者后台：https://portal.qiniu.com
   QINIU_BUCKET_DOMAIN: '<-- 此处填写七牛创建的空间域名 -->',
   // 云片颁发的 APi Key, 请访问云片开发者后台: https://www.yunpian.com/admin/main
-  YUNPIAN_API_KEY: '<-- 此处填写云片颁发的 Api Key -->',
+  YUNPIAN_API_KEY: '<-- 此处填写云片颁发的 API Key -->',
   // N3D 密钥，用来加密所有的 Id 数字，不小于 5 位的字母数字组合
   N3D_KEY: '<-- 此处设置加密 Id 的密钥 -->',
   // 认证 Cookie 主域名 如果没有正式域名，请修改本地 hosts 文件配置域名
@@ -42,7 +42,6 @@ module.exports = {
 };
 
 // 示例：
-
 /** 
 module.exports = {
   AUTH_COOKIE_NAME: 'rong_auth_cookie',
