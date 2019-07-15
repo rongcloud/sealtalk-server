@@ -10,6 +10,9 @@ var YunPianSMS = require('../util/sms.js'),
 
 var regionListCache;
 
+var adminReport = require('../util/admin-report'),
+  reportRegister = adminReport.reportRegister;
+
 express = require('express');
 
 co = require('co');
@@ -32,7 +35,11 @@ Utility = require('../util/util').Utility;
 
 APIResult = require('../util/util').APIResult;
 
+var addUpdateTimeToList = require('../util/util').addUpdateTimeToList;
+
 ref = require('../db'), sequelize = ref[0], User = ref[1], Blacklist = ref[2], Friendship = ref[3], Group = ref[4], GroupMember = ref[5], GroupSync = ref[6], DataVersion = ref[7], VerificationCode = ref[8], LoginLog = ref[9], VerificationViolation = ref[10];
+
+var GroupFav = ref[11];
 
 MAX_GROUP_MEMBER_COUNT = 500;
 
@@ -48,7 +55,13 @@ PASSWORD_MIN_LENGTH = 6;
 
 PASSWORD_MAX_LENGTH = 20;
 
-rongCloud.init(Config.RONGCLOUD_APP_KEY, Config.RONGCLOUD_APP_SECRET);
+FRIENDSHIP_AGREED = 20;
+
+FRIENDSHIP_DELETED = 30;
+
+rongCloud.init(Config.RONGCLOUD_APP_KEY, Config.RONGCLOUD_APP_SECRET, {
+  api: Config.RONGCLOUD_API_URL
+});
 
 router = express.Router();
 
@@ -59,7 +72,7 @@ regionMap = {
 };
 
 var ViolationControl = {
-  getDefaultVerifi: function() {
+  getDefaultVerifi: function () {
     return {
       time: Date.now(),
       count: 0
@@ -106,9 +119,9 @@ var ViolationControl = {
   }
 };
 
-getToken = function(userId, nickname, portraitUri) {
-  return new Promise(function(resolve, reject) {
-    return rongCloud.user.getToken(Utility.encodeId(userId), nickname, portraitUri, function(err, resultText) {
+getToken = function (userId, nickname, portraitUri) {
+  return new Promise(function (resolve, reject) {
+    return rongCloud.user.getToken(Utility.encodeId(userId), nickname, portraitUri, function (err, resultText) {
       var result;
       if (err) {
         return reject(err);
@@ -120,26 +133,42 @@ getToken = function(userId, nickname, portraitUri) {
       return User.update({
         rongCloudToken: result.token
       }, {
-        where: {
-          id: userId
-        }
-      }).then(function() {
-        return resolve(result.token);
-      })["catch"](function(error) {
-        return reject(error);
-      });
+          where: {
+            id: userId
+          }
+        }).then(function () {
+          return resolve(result.token);
+        })["catch"](function (error) {
+          return reject(error);
+        });
     });
   });
 };
 
-router.post('/send_code', function(req, res, next) {
+getNormalToken = function (userId, nickname, portraitUri) {
+  return new Promise(function (resolve, reject) {
+    rongCloud.user.getToken(userId, nickname, portraitUri, function (err, resultText) {
+      var result;
+      if (err) {
+        return reject(err);
+      }
+      result = JSON.parse(resultText);
+      if (result.code !== 200) {
+        return reject(new Error('RongCloud Server API Error Code: ' + result.code));
+      }
+      resolve({token: result.token});
+    });
+  });
+};
+
+router.post('/send_code', function (req, res, next) {
   var phone, region;
   region = req.body.region;
   phone = req.body.phone;
   if (!validator.isMobilePhone(phone.toString(), regionMap[region])) {
     return res.status(400).send('Invalid region and phone number.');
   }
-  return VerificationCode.getByPhone(region, phone).then(function(verification) {
+  return VerificationCode.getByPhone(region, phone).then(function (verification) {
     var code, subtraction, timeDiff;
     if (verification) {
       timeDiff = Math.floor((Date.now() - verification.updatedAt.getTime()) / 1000);
@@ -158,11 +187,11 @@ router.post('/send_code', function(req, res, next) {
         region: region,
         phone: phone,
         sessionId: ''
-      }).then(function() {
+      }).then(function () {
         return res.send(new APIResult(200));
       });
     } else if (Config.RONGCLOUD_SMS_REGISTER_TEMPLATE_ID !== '') {
-      return rongCloud.sms.sendCode(region, phone, Config.RONGCLOUD_SMS_REGISTER_TEMPLATE_ID, function(err, resultText) {
+      return rongCloud.sms.sendCode(region, phone, Config.RONGCLOUD_SMS_REGISTER_TEMPLATE_ID, function (err, resultText) {
         var result;
         if (err) {
           return next(err);
@@ -175,7 +204,7 @@ router.post('/send_code', function(req, res, next) {
           region: region,
           phone: phone,
           sessionId: result.sessionId
-        }).then(function() {
+        }).then(function () {
           return res.send(new APIResult(200));
         });
       });
@@ -183,38 +212,35 @@ router.post('/send_code', function(req, res, next) {
   })["catch"](next);
 });
 
-router.post('/send_code_yp', function(req, res, next) {
+router.post('/send_code_yp', function (req, res, next) {
   var phone = req.body.phone,
     region = req.body.region,
-    ip = getClientIp(req),
-    isDevelopment = req.app.get('env') === 'development';
+    ip = getClientIp(req);
   region = formatRegion(region);
+  if (Config.DEBUG) {
+    return Promise.resolve().then(function(){
+      return res.send(new APIResult(200));
+    })["catch"](next);
+  }
   var newVerification = { phone: phone, region: region, sessionId: '' };
-  return VerificationCode.getByPhone(region, phone).then(function(verification) {
+  return VerificationCode.getByPhone(region, phone).then(function (verification) {
     if (verification) {
       var timeDiff = Math.floor((Date.now() - verification.updatedAt.getTime()) / 1000);
       var momentNow = moment();
-      var subtraction = isDevelopment ? momentNow.subtract(5, 's') : momentNow.subtract(1, 'm');
+      var subtraction = momentNow.subtract(1, 'm');
       if (subtraction.isBefore(verification.updatedAt)) {
         return res.send(new APIResult(5000, null, 'Throttle limit exceeded.'));
       }
     }
-    if (isDevelopment) {
-      return VerificationCode.upsert(newVerification).then(function() {
-        return res.send(new APIResult(200));
-      });
-    }
-    ViolationControl.check(ip)
+    return ViolationControl.check(ip)
       .then(function () {
         return sendYunPianCode(region, phone);
       })
       .then(function (result) {
         newVerification.sessionId = result.sessionId;
-        return VerificationCode.upsert(newVerification).then(function() {
-          console.log('send success');
+        return VerificationCode.upsert(newVerification).then(function () {
           res.send(new APIResult(200));
-          ViolationControl.update(ip);
-          return;
+          return ViolationControl.update(ip);
         });
       }, function (err) {
         res.send(new APIResult(err.code, err, err.msg));
@@ -222,12 +248,12 @@ router.post('/send_code_yp', function(req, res, next) {
   })["catch"](next);
 });
 
-router.post('/verify_code', function(req, res, next) {
+router.post('/verify_code', function (req, res, next) {
   var code, phone, region;
   phone = req.body.phone;
   region = req.body.region;
   code = req.body.code;
-  return VerificationCode.getByPhone(region, phone).then(function(verification) {
+  return VerificationCode.getByPhone(region, phone).then(function (verification) {
     if (!verification) {
       return res.status(404).send('Unknown phone number.');
     } else if (moment().subtract(2, 'm').isAfter(verification.updatedAt)) {
@@ -237,7 +263,7 @@ router.post('/verify_code', function(req, res, next) {
         verification_token: verification.token
       }));
     } else {
-      return rongCloud.sms.verifyCode(verification.sessionId, code, function(err, resultText) {
+      return rongCloud.sms.verifyCode(verification.sessionId, code, function (err, resultText) {
         var errorMessage, result;
         if (err) {
           errorMessage = err.message;
@@ -263,21 +289,16 @@ router.post('/verify_code', function(req, res, next) {
   })["catch"](next);
 });
 
-router.post('/verify_code_yp', function(req, res, next) {
+router.post('/verify_code_yp', function (req, res, next) {
   var phone = req.body.phone,
     region = req.body.region,
     code = req.body.code,
-    isDevelopment = req.app.get('env') === 'development';
-  region = formatRegion(region);
-  return VerificationCode.getByPhone(region, phone).then(function(verification) {
+    region = formatRegion(region);
+  return VerificationCode.getByPhone(region, phone).then(function (verification) {
     if (!verification) {
       return res.status(404).send('Unknown phone number.');
     } else if (moment().subtract(2, 'm').isAfter(verification.updatedAt)) {
       return res.send(new APIResult(2000, null, 'Verification code expired.'));
-    } else if (isDevelopment && code === '9999') {
-      return res.send(new APIResult(200, {
-        verification_token: verification.token
-      }));
     }
     var success = verification.sessionId == code;
     if (success) {
@@ -290,8 +311,38 @@ router.post('/verify_code_yp', function(req, res, next) {
   })["catch"](next);
 });
 
+router.post('/verify_code_yp_t', function (req, res, next) {
+  var phone = req.body.phone,
+    region = req.body.region,
+    code = req.body.code,
+    userId = req.body.key,
+    region = formatRegion(region),
+    name = "",
+    portraitUri = "";
+  if (Config.DEBUG) {
+    return getNormalToken(userId, name, portraitUri).then(function (result) {
+      return res.send(new APIResult(200, Utility.encodeResults(result)));
+    })["catch"](next);
+  }
+  return VerificationCode.getByPhone(region, phone).then(function (verification) {
+    if (!verification) {
+      return res.status(404).send('Unknown phone number.');
+    } else if (moment().subtract(2, 'm').isAfter(verification.updatedAt)) {
+      return res.send(new APIResult(2000, null, 'Verification code expired.'));
+    }
+    var success = verification.sessionId == code;
+    if (success) {
+      return getNormalToken(userId, name, portraitUri).then(function (result) {
+        return res.send(new APIResult(200, Utility.encodeResults(result)));
+      });
+    } else {
+      return res.send(new APIResult(1000, null, 'Invalid verification code.'));
+    }
+  })["catch"](next);
+});
+
 router.get('/regionlist', function (req, res, next) {
-  
+
   if (regionListCache && utils.isArray(regionListCache)) {
     return res.send(new APIResult(200, regionListCache));
   }
@@ -304,7 +355,7 @@ router.get('/regionlist', function (req, res, next) {
   })["catch"](next);;
 });
 
-router.post('/check_phone_available', function(req, res, next) {
+router.post('/check_phone_available', function (req, res, next) {
   var phone, region;
   region = req.body.region;
   phone = req.body.phone;
@@ -313,7 +364,7 @@ router.post('/check_phone_available', function(req, res, next) {
   if (regionName && !validator.isMobilePhone(phone.toString(), regionName)) {
     return res.status(400).send('Invalid region and phone number.');
   }
-  return User.checkPhoneAvailable(region, phone).then(function(result) {
+  return User.checkPhoneAvailable(region, phone).then(function (result) {
     if (result) {
       return res.send(new APIResult(200, true));
     } else {
@@ -322,7 +373,7 @@ router.post('/check_phone_available', function(req, res, next) {
   })["catch"](next);
 });
 
-router.post('/register', function(req, res, next) {
+router.post('/register', function (req, res, next) {
   var nickname, password, verificationToken;
   nickname = Utility.xss(req.body.nickname, NICKNAME_MAX_LENGTH);
   password = req.body.password;
@@ -339,16 +390,16 @@ router.post('/register', function(req, res, next) {
   if (!validator.isUUID(verificationToken)) {
     return res.status(400).send('Invalid verification_token.');
   }
-  return VerificationCode.getByToken(verificationToken).then(function(verification) {
+  return VerificationCode.getByToken(verificationToken).then(function (verification) {
     if (!verification) {
       return res.status(404).send('Unknown verification_token.');
     }
-    return User.checkPhoneAvailable(verification.region, verification.phone).then(function(result) {
+    return User.checkPhoneAvailable(verification.region, verification.phone).then(function (result) {
       var hash, salt;
       if (result) {
         salt = Utility.random(1000, 9999);
         hash = Utility.hash(password, salt);
-        return sequelize.transaction(function(t) {
+        return sequelize.transaction(function (t) {
           return User.create({
             nickname: nickname,
             region: verification.region,
@@ -356,19 +407,20 @@ router.post('/register', function(req, res, next) {
             passwordHash: hash,
             passwordSalt: salt.toString()
           }, {
-            transaction: t
-          }).then(function(user) {
-            return DataVersion.create({
-              userId: user.id,
               transaction: t
-            }).then(function() {
-              Session.setAuthCookie(res, user.id);
-              Session.setNicknameToCache(user.id, nickname);
-              return res.send(new APIResult(200, Utility.encodeResults({
-                id: user.id
-              })));
+            }).then(function (user) {
+              return DataVersion.create({
+                userId: user.id,
+                transaction: t
+              }).then(function () {
+                Session.setAuthCookie(res, user.id);
+                Session.setNicknameToCache(user.id, nickname);
+                var isDebug = req.app.get('env') !== 'production';
+                return res.send(new APIResult(200, Utility.encodeResults({
+                  id: user.id
+                })));
+              });
             });
-          });
         });
       } else {
         return res.status(400).send('Phone number has already existed.');
@@ -377,7 +429,7 @@ router.post('/register', function(req, res, next) {
   })["catch"](next);
 });
 
-router.post('/login', function(req, res, next) {
+router.post('/login', function (req, res, next) {
   var password, phone, region;
   region = req.body.region;
   phone = req.body.phone;
@@ -392,15 +444,15 @@ router.post('/login', function(req, res, next) {
       phone: phone
     },
     attributes: ['id', 'passwordHash', 'passwordSalt', 'nickname', 'portraitUri', 'rongCloudToken']
-  }).then(function(user) {
+  }).then(function (user) {
     var errorMessage, passwordHash;
-    errorMessage = 'Invalid phone or password.';
+    errorMessage = 'Phone number not found.';
     if (!user) {
       return res.send(new APIResult(1000, null, errorMessage));
     } else {
       passwordHash = Utility.hash(password, user.passwordSalt);
       if (passwordHash !== user.passwordHash) {
-        return res.send(new APIResult(1000, null, errorMessage));
+        return res.send(new APIResult(1001, null, 'Wrong password.'));
       }
       Session.setAuthCookie(res, user.id);
       Session.setNicknameToCache(user.id, user.nickname);
@@ -416,20 +468,20 @@ router.post('/login', function(req, res, next) {
           },
           attributes: ['id', 'name']
         }
-      }).then(function(groups) {
+      }).then(function (groups) {
         var groupIdNamePairs;
         Utility.log('Sync groups: %j', groups);
         groupIdNamePairs = {};
-        groups.forEach(function(group) {
+        groups.forEach(function (group) {
           return groupIdNamePairs[Utility.encodeId(group.group.id)] = group.group.name;
         });
         Utility.log('Sync groups: %j', groupIdNamePairs);
-        return rongCloud.group.sync(Utility.encodeId(user.id), groupIdNamePairs, function(err, resultText) {
+        return rongCloud.group.sync(Utility.encodeId(user.id), groupIdNamePairs, function (err, resultText) {
           if (err) {
             return Utility.logError('Error sync user\'s group list failed: %s', err);
           }
         });
-      })["catch"](function(error) {
+      })["catch"](function (error) {
         return Utility.logError('Sync groups error: ', error);
       });
       if (user.rongCloudToken === '') {
@@ -440,7 +492,7 @@ router.post('/login', function(req, res, next) {
             token: 'fake token'
           })));
         }*/
-        return getToken(user.id, user.nickname, user.portraitUri).then(function(token) {
+        return getToken(user.id, user.nickname, user.portraitUri).then(function (token) {
           return res.send(new APIResult(200, Utility.encodeResults({
             id: user.id,
             token: token
@@ -456,12 +508,12 @@ router.post('/login', function(req, res, next) {
   })["catch"](next);
 });
 
-router.post('/logout', function(req, res) {
+router.post('/logout', function (req, res) {
   res.clearCookie(Config.AUTH_COOKIE_NAME);
   return res.send(new APIResult(200));
 });
 
-router.post('/reset_password', function(req, res, next) {
+router.post('/reset_password', function (req, res, next) {
   var password, verificationToken;
   password = req.body.password;
   verificationToken = req.body.verification_token;
@@ -474,7 +526,7 @@ router.post('/reset_password', function(req, res, next) {
   if (!validator.isUUID(verificationToken)) {
     return res.status(400).send('Invalid verification_token.');
   }
-  return VerificationCode.getByToken(verificationToken).then(function(verification) {
+  return VerificationCode.getByToken(verificationToken).then(function (verification) {
     var hash, salt;
     if (!verification) {
       return res.status(404).send('Unknown verification_token.');
@@ -485,17 +537,17 @@ router.post('/reset_password', function(req, res, next) {
       passwordHash: hash,
       passwordSalt: salt.toString()
     }, {
-      where: {
-        region: verification.region,
-        phone: verification.phone
-      }
-    }).then(function() {
-      return res.send(new APIResult(200));
-    });
+        where: {
+          region: verification.region,
+          phone: verification.phone
+        }
+      }).then(function () {
+        return res.send(new APIResult(200));
+      });
   })["catch"](next);
 });
 
-router.post('/change_password', function(req, res, next) {
+router.post('/change_password', function (req, res, next) {
   var newPassword, oldPassword;
   newPassword = req.body.newPassword;
   oldPassword = req.body.oldPassword;
@@ -507,7 +559,7 @@ router.post('/change_password', function(req, res, next) {
   }
   return User.findById(Session.getCurrentUserId(req, {
     attributes: ['id', 'passwordHash', 'passwordSalt']
-  })).then(function(user) {
+  })).then(function (user) {
     var newHash, newSalt, oldHash;
     oldHash = Utility.hash(oldPassword, user.passwordSalt);
     if (oldHash !== user.passwordHash) {
@@ -518,13 +570,13 @@ router.post('/change_password', function(req, res, next) {
     return user.update({
       passwordHash: newHash,
       passwordSalt: newSalt.toString()
-    }).then(function() {
+    }).then(function () {
       return res.send(new APIResult(200));
     });
   })["catch"](next);
 });
 
-router.post('/set_nickname', function(req, res, next) {
+router.post('/set_nickname', function (req, res, next) {
   var currentUserId, nickname, timestamp;
   nickname = Utility.xss(req.body.nickname, NICKNAME_MAX_LENGTH);
   if (!validator.isLength(nickname, NICKNAME_MIN_LENGTH, NICKNAME_MAX_LENGTH)) {
@@ -536,51 +588,51 @@ router.post('/set_nickname', function(req, res, next) {
     nickname: nickname,
     timestamp: timestamp
   }, {
-    where: {
-      id: currentUserId
-    }
-  }).then(function() {
-    rongCloud.user.refresh(Utility.encodeId(currentUserId), nickname, null, function(err, resultText) {
-      var result;
-      if (err) {
-        Utility.logError('RongCloud Server API Error: ', err.message);
+      where: {
+        id: currentUserId
       }
-      result = JSON.parse(resultText);
-      if (result.code !== 200) {
-        return Utility.logError('RongCloud Server API Error Code: ', result.code);
-      }
-    });
-    Session.setNicknameToCache(currentUserId, nickname);
-    return Promise.all([DataVersion.updateUserVersion(currentUserId, timestamp), DataVersion.updateAllFriendshipVersion(currentUserId, timestamp)]).then(function() {
-      Cache.del("user_" + currentUserId);
-      Cache.del("friendship_profile_user_" + currentUserId);
-      Friendship.findAll({
-        where: {
-          userId: currentUserId
-        },
-        attributes: ['friendId']
-      }).then(function(friends) {
-        return friends.forEach(function(friend) {
-          return Cache.del("friendship_all_" + friend.friendId);
-        });
+    }).then(function () {
+      rongCloud.user.refresh(Utility.encodeId(currentUserId), nickname, null, function (err, resultText) {
+        var result;
+        if (err) {
+          Utility.logError('RongCloud Server API Error: ', err.message);
+        }
+        result = JSON.parse(resultText);
+        if (result.code !== 200) {
+          return Utility.logError('RongCloud Server API Error Code: ', result.code);
+        }
       });
-      GroupMember.findAll({
-        where: {
-          memberId: currentUserId,
-          isDeleted: false
-        },
-        attributes: ['groupId']
-      }).then(function(groupMembers) {
-        return groupMembers.forEach(function(groupMember) {
-          return Cache.del("group_members_" + groupMember.groupId);
+      Session.setNicknameToCache(currentUserId, nickname);
+      return Promise.all([DataVersion.updateUserVersion(currentUserId, timestamp), DataVersion.updateAllFriendshipVersion(currentUserId, timestamp)]).then(function () {
+        Cache.del("user_" + currentUserId);
+        Cache.del("friendship_profile_user_" + currentUserId);
+        Friendship.findAll({
+          where: {
+            userId: currentUserId
+          },
+          attributes: ['friendId']
+        }).then(function (friends) {
+          return friends.forEach(function (friend) {
+            return Cache.del("friendship_all_" + friend.friendId);
+          });
         });
+        GroupMember.findAll({
+          where: {
+            memberId: currentUserId,
+            isDeleted: false
+          },
+          attributes: ['groupId']
+        }).then(function (groupMembers) {
+          return groupMembers.forEach(function (groupMember) {
+            return Cache.del("group_members_" + groupMember.groupId);
+          });
+        });
+        return res.send(new APIResult(200));
       });
-      return res.send(new APIResult(200));
-    });
-  })["catch"](next);
+    })["catch"](next);
 });
 
-router.post('/set_portrait_uri', function(req, res, next) {
+router.post('/set_portrait_uri', function (req, res, next) {
   var currentUserId, portraitUri, timestamp;
   portraitUri = Utility.xss(req.body.portraitUri, PORTRAIT_URI_MAX_LENGTH);
   if (!validator.isURL(portraitUri, {
@@ -598,58 +650,58 @@ router.post('/set_portrait_uri', function(req, res, next) {
     portraitUri: portraitUri,
     timestamp: timestamp
   }, {
-    where: {
-      id: currentUserId
-    }
-  }).then(function() {
-    rongCloud.user.refresh(Utility.encodeId(currentUserId), null, portraitUri, function(err, resultText) {
-      var result;
-      if (err) {
-        Utility.logError('RongCloud Server API Error: ', err.message);
+      where: {
+        id: currentUserId
       }
-      result = JSON.parse(resultText);
-      if (result.code !== 200) {
-        return Utility.logError('RongCloud Server API Error Code: ', result.code);
-      }
-    });
-    return Promise.all([DataVersion.updateUserVersion(currentUserId, timestamp), DataVersion.updateAllFriendshipVersion(currentUserId, timestamp)]).then(function() {
-      Cache.del("user_" + currentUserId);
-      Cache.del("friendship_profile_user_" + currentUserId);
-      Friendship.findAll({
-        where: {
-          userId: currentUserId
-        },
-        attributes: ['friendId']
-      }).then(function(friends) {
-        return friends.forEach(function(friend) {
-          return Cache.del("friendship_all_" + friend.friendId);
-        });
+    }).then(function () {
+      rongCloud.user.refresh(Utility.encodeId(currentUserId), null, portraitUri, function (err, resultText) {
+        var result;
+        if (err) {
+          Utility.logError('RongCloud Server API Error: ', err.message);
+        }
+        result = JSON.parse(resultText);
+        if (result.code !== 200) {
+          return Utility.logError('RongCloud Server API Error Code: ', result.code);
+        }
       });
-      GroupMember.findAll({
-        where: {
-          memberId: currentUserId,
-          isDeleted: false
-        },
-        attributes: ['groupId']
-      }).then(function(groupMembers) {
-        return groupMembers.forEach(function(groupMember) {
-          return Cache.del("group_members_" + groupMember.groupId);
+      return Promise.all([DataVersion.updateUserVersion(currentUserId, timestamp), DataVersion.updateAllFriendshipVersion(currentUserId, timestamp)]).then(function () {
+        Cache.del("user_" + currentUserId);
+        Cache.del("friendship_profile_user_" + currentUserId);
+        Friendship.findAll({
+          where: {
+            userId: currentUserId
+          },
+          attributes: ['friendId']
+        }).then(function (friends) {
+          return friends.forEach(function (friend) {
+            return Cache.del("friendship_all_" + friend.friendId);
+          });
         });
+        GroupMember.findAll({
+          where: {
+            memberId: currentUserId,
+            isDeleted: false
+          },
+          attributes: ['groupId']
+        }).then(function (groupMembers) {
+          return groupMembers.forEach(function (groupMember) {
+            return Cache.del("group_members_" + groupMember.groupId);
+          });
+        });
+        return res.send(new APIResult(200));
       });
-      return res.send(new APIResult(200));
-    });
-  })["catch"](next);
+    })["catch"](next);
 });
 
-router.post('/add_to_blacklist', function(req, res, next) {
+router.post('/add_to_blacklist', function (req, res, next) {
   var currentUserId, encodedFriendId, friendId, timestamp;
   friendId = req.body.friendId;
   encodedFriendId = req.body.encodedFriendId;
   currentUserId = Session.getCurrentUserId(req);
   timestamp = Date.now();
-  return User.checkUserExists(friendId).then(function(result) {
+  return User.checkUserExists(friendId).then(function (result) {
     if (result) {
-      return rongCloud.user.blacklist.add(Utility.encodeId(currentUserId), encodedFriendId, function(err, resultText) {
+      return rongCloud.user.blacklist.add(Utility.encodeId(currentUserId), encodedFriendId, function (err, resultText) {
         if (err) {
           return next(err);
         } else {
@@ -658,9 +710,26 @@ router.post('/add_to_blacklist', function(req, res, next) {
             friendId: friendId,
             status: true,
             timestamp: timestamp
-          }).then(function() {
-            return DataVersion.updateBlacklistVersion(currentUserId, timestamp).then(function() {
+          }).then(function () {
+            return DataVersion.updateBlacklistVersion(currentUserId, timestamp).then(function () {
               Cache.del("user_blacklist_" + currentUserId);
+              return Friendship.update({
+                status: FRIENDSHIP_DELETED,
+                displayName: '',
+                message: '',
+                timestamp: timestamp
+              }, {
+                where: {
+                  userId: currentUserId,
+                  friendId: friendId,
+                  status: FRIENDSHIP_AGREED
+                }
+              });
+            }).then(function () {
+              Cache.del("friendship_profile_displayName_" + currentUserId + "_" + friendId);
+              Cache.del("friendship_profile_user_" + currentUserId + "_" + friendId);
+              Cache.del("friendship_all_" + currentUserId);
+              Cache.del("friendship_all_" + friendId);
               return res.send(new APIResult(200));
             });
           });
@@ -672,13 +741,13 @@ router.post('/add_to_blacklist', function(req, res, next) {
   })["catch"](next);
 });
 
-router.post('/remove_from_blacklist', function(req, res, next) {
+router.post('/remove_from_blacklist', function (req, res, next) {
   var currentUserId, encodedFriendId, friendId, timestamp;
   friendId = req.body.friendId;
   encodedFriendId = req.body.encodedFriendId;
   currentUserId = Session.getCurrentUserId(req);
   timestamp = Date.now();
-  return rongCloud.user.blacklist.remove(Utility.encodeId(currentUserId), encodedFriendId, function(err, resultText) {
+  return rongCloud.user.blacklist.remove(Utility.encodeId(currentUserId), encodedFriendId, function (err, resultText) {
     if (err) {
       return next(err);
     } else {
@@ -686,31 +755,31 @@ router.post('/remove_from_blacklist', function(req, res, next) {
         status: false,
         timestamp: timestamp
       }, {
-        where: {
-          userId: currentUserId,
-          friendId: friendId
-        }
-      }).then(function() {
-        return DataVersion.updateBlacklistVersion(currentUserId, timestamp).then(function() {
-          Cache.del("user_blacklist_" + currentUserId);
-          return res.send(new APIResult(200));
-        });
-      })["catch"](next);
+          where: {
+            userId: currentUserId,
+            friendId: friendId
+          }
+        }).then(function () {
+          return DataVersion.updateBlacklistVersion(currentUserId, timestamp).then(function () {
+            Cache.del("user_blacklist_" + currentUserId);
+            return res.send(new APIResult(200));
+          });
+        })["catch"](next);
     }
   });
 });
 
-router.post('/upload_contacts', function(req, res, next) {
+router.post('/upload_contacts', function (req, res, next) {
   var contacts;
   contacts = req.body;
   return res.status(404).send('Not implements.');
 });
 
-router.get('/get_token', function(req, res, next) {
+router.get('/get_token', function (req, res, next) {
   return User.findById(Session.getCurrentUserId(req, {
     attributes: ['id', 'nickname', 'portraitUri']
-  })).then(function(user) {
-    return getToken(user.id, user.nickname, user.portraitUri).then(function(token) {
+  })).then(function (user) {
+    return getToken(user.id, user.nickname, user.portraitUri).then(function (token) {
       return res.send(new APIResult(200, Utility.encodeResults({
         userId: user.id,
         token: token
@@ -719,7 +788,7 @@ router.get('/get_token', function(req, res, next) {
   })["catch"](next);
 });
 
-router.get('/get_image_token', function(req, res, next) {
+router.get('/get_image_token', function (req, res, next) {
   var putPolicy, token;
   qiniu.conf.ACCESS_KEY = Config.QINIU_ACCESS_KEY;
   qiniu.conf.SECRET_KEY = Config.QINIU_SECRET_KEY;
@@ -732,8 +801,8 @@ router.get('/get_image_token', function(req, res, next) {
   }));
 });
 
-router.get('/get_sms_img_code', function(req, res, next) {
-  rongCloud.sms.getImgCode(Config.RONGCLOUD_APP_KEY, function(err, resultText) {
+router.get('/get_sms_img_code', function (req, res, next) {
+  rongCloud.sms.getImgCode(Config.RONGCLOUD_APP_KEY, function (err, resultText) {
     var result;
     if (err) {
       return next(err);
@@ -749,11 +818,11 @@ router.get('/get_sms_img_code', function(req, res, next) {
   }));
 });
 
-router.get('/blacklist', function(req, res, next) {
+router.get('/blacklist', function (req, res, next) {
   var currentUserId, timestamp;
   currentUserId = Session.getCurrentUserId(req);
   timestamp = Date.now();
-  return Cache.get("user_blacklist_" + currentUserId).then(function(blacklist) {
+  return Cache.get("user_blacklist_" + currentUserId).then(function (blacklist) {
     if (blacklist) {
       return res.send(new APIResult(200, blacklist));
     } else {
@@ -770,9 +839,9 @@ router.get('/blacklist', function(req, res, next) {
           model: User,
           attributes: ['id', 'nickname', 'portraitUri', 'updatedAt']
         }
-      }).then(function(dbBlacklist) {
+      }).then(function (dbBlacklist) {
         var results;
-        rongCloud.user.blacklist.query(Utility.encodeId(currentUserId), function(err, resultText) {
+        rongCloud.user.blacklist.query(Utility.encodeId(currentUserId), function (err, resultText) {
           var dbBlacklistUserIds, hasDirtyData, result, serverBlacklistUserIds;
           if (err) {
             return Utility.logError('Error: request server blacklist failed: %s', err);
@@ -781,7 +850,7 @@ router.get('/blacklist', function(req, res, next) {
             if (result.code === 200) {
               hasDirtyData = false;
               serverBlacklistUserIds = result.users;
-              dbBlacklistUserIds = dbBlacklist.map(function(blacklist) {
+              dbBlacklistUserIds = dbBlacklist.map(function (blacklist) {
                 if (blacklist.user) {
                   return blacklist.user.id;
                 } else {
@@ -792,41 +861,46 @@ router.get('/blacklist', function(req, res, next) {
               if (hasDirtyData) {
                 Utility.log('Dirty blacklist data %j', dbBlacklist);
               }
-              serverBlacklistUserIds.forEach(function(encodedUserId) {
+              serverBlacklistUserIds.forEach(function (encodedUserId) {
                 var userId;
                 userId = Utility.decodeIds(encodedUserId);
                 if (dbBlacklistUserIds.indexOf(userId) === -1) {
                   return Blacklist.create({
-                    userId: currentUserId,
-                    friendId: userId,
+                    userId: Utility.decodeIds(currentUserId),
+                    friendId: Utility.decodeIds(userId),
                     status: true,
                     timestamp: timestamp
-                  }).then(function() {
+                  }).then(function () {
                     Utility.log('Sync: fix user blacklist, add %s -> %s from db.', currentUserId, userId);
                     return DataVersion.updateBlacklistVersion(currentUserId, timestamp);
-                  })["catch"](function() {});
+                  })["catch"](function () { });
                 }
               });
-              return dbBlacklistUserIds.forEach(function(userId) {
+              return dbBlacklistUserIds.forEach(function (userId) {
                 if (userId && serverBlacklistUserIds.indexOf(Utility.encodeId(userId)) === -1) {
                   return Blacklist.update({
                     status: false,
                     timestamp: timestamp
                   }, {
-                    where: {
-                      userId: currentUserId,
-                      friendId: userId
-                    }
-                  }).then(function() {
-                    Utility.log('Sync: fix user blacklist, remove %s -> %s from db.', currentUserId, userId);
-                    return DataVersion.updateBlacklistVersion(currentUserId, timestamp);
-                  });
+                      where: {
+                        userId: Utility.decodeIds(currentUserId),
+                        friendId: Utility.decodeIds(userId)
+                      }
+                    }).then(function () {
+                      Utility.log('Sync: fix user blacklist, remove %s -> %s from db.', currentUserId, userId);
+                      return DataVersion.updateBlacklistVersion(Utility.decodeIds(currentUserId), timestamp);
+                    }, function (err) {
+                      console.log('black list error', err);
+                    });
                 }
               });
             }
           }
         });
         results = Utility.encodeResults(dbBlacklist, [['user', 'id']]);
+        results = addUpdateTimeToList(results, {
+          objName: 'user'
+        });
         Cache.set("user_blacklist_" + currentUserId, results);
         return res.send(new APIResult(200, results));
       });
@@ -834,10 +908,10 @@ router.get('/blacklist', function(req, res, next) {
   })["catch"](next);
 });
 
-router.get('/groups', function(req, res, next) {
+router.get('/groups', function (req, res, next) {
   var currentUserId;
   currentUserId = Session.getCurrentUserId(req);
-  return Cache.get("user_groups_" + currentUserId).then(function(groups) {
+  return Cache.get("user_groups_" + currentUserId).then(function (groups) {
     if (groups) {
       return res.send(new APIResult(200, groups));
     } else {
@@ -852,7 +926,7 @@ router.get('/groups', function(req, res, next) {
             attributes: ['id', 'name', 'portraitUri', 'creatorId', 'memberCount', 'maxMemberCount']
           }
         ]
-      }).then(function(groups) {
+      }).then(function (groups) {
         var results;
         results = Utility.encodeResults(groups, [['group', 'id'], ['group', 'creatorId']]);
         Cache.set("user_groups_" + currentUserId, results);
@@ -862,7 +936,7 @@ router.get('/groups', function(req, res, next) {
   })["catch"](next);
 });
 
-router.get('/sync/:version', function(req, res, next) {
+router.get('/sync/:version', function (req, res, next) {
   var blacklist, currentUserId, friends, groupMembers, groups, maxVersions, user, version;
   version = req.params.version;
   if (!validator.isInt(version)) {
@@ -871,8 +945,8 @@ router.get('/sync/:version', function(req, res, next) {
   user = blacklist = friends = groups = groupMembers = null;
   maxVersions = [];
   currentUserId = Session.getCurrentUserId(req);
-  return DataVersion.findById(currentUserId).then(function(dataVersion) {
-    return co(function*() {
+  return DataVersion.findById(currentUserId).then(function (dataVersion) {
+    return co(function* () {
       var groupIds, group_members;
       if (dataVersion.userVersion > version) {
         user = (yield User.findById(currentUserId, {
@@ -931,7 +1005,7 @@ router.get('/sync/:version', function(req, res, next) {
         }));
       }
       if (groups) {
-        groupIds = groups.map(function(group) {
+        groupIds = groups.map(function (group) {
           return group.group.id;
         });
       } else {
@@ -960,22 +1034,22 @@ router.get('/sync/:version', function(req, res, next) {
         maxVersions.push(user.timestamp);
       }
       if (blacklist) {
-        maxVersions.push(_.max(blacklist, function(item) {
+        maxVersions.push(_.max(blacklist, function (item) {
           return item.timestamp;
         }).timestamp);
       }
       if (friends) {
-        maxVersions.push(_.max(friends, function(item) {
+        maxVersions.push(_.max(friends, function (item) {
           return item.timestamp;
         }).timestamp);
       }
       if (groups) {
-        maxVersions.push(_.max(groups, function(item) {
+        maxVersions.push(_.max(groups, function (item) {
           return item.group.timestamp;
         }).group.timestamp);
       }
       if (groupMembers) {
-        maxVersions.push(_.max(groupMembers, function(item) {
+        maxVersions.push(_.max(groupMembers, function (item) {
           return item.timestamp;
         }).timestamp);
       }
@@ -1004,7 +1078,7 @@ router.get('/sync/:version', function(req, res, next) {
   })["catch"](next);
 });
 
-router.get('/batch', function(req, res, next) {
+router.get('/batch', function (req, res, next) {
   var ids;
   ids = req.query.id;
   if (!Array.isArray(ids)) {
@@ -1018,22 +1092,31 @@ router.get('/batch', function(req, res, next) {
       }
     },
     attributes: ['id', 'nickname', 'portraitUri']
-  }).then(function(users) {
+  }).then(function (users) {
     return res.send(new APIResult(200, Utility.encodeResults(users)));
   })["catch"](next);
 });
 
-router.get('/:id', function(req, res, next) {
+router.get('/favgroups', function (req, res, next) {
+  var currentUserId = Session.getCurrentUserId(req),
+    limit = req.query.limit,
+    offset = req.query.offset;
+  return GroupFav.getGroups(currentUserId, limit, offset).then(function (results) {
+    return res.send(new APIResult(200, results));
+  })['catch'](next);
+});
+
+router.get('/:id', function (req, res, next) {
   var userId;
   userId = req.params.id;
   userId = Utility.decodeIds(userId);
-  return Cache.get("user_" + userId).then(function(user) {
+  return Cache.get("user_" + userId).then(function (user) {
     if (user) {
       return res.send(new APIResult(200, user));
     } else {
       return User.findById(userId, {
         attributes: ['id', 'nickname', 'portraitUri']
-      }).then(function(user) {
+      }).then(function (user) {
         var results;
         if (!user) {
           return res.status(404).send('Unknown user.');
@@ -1046,7 +1129,7 @@ router.get('/:id', function(req, res, next) {
   })["catch"](next);
 });
 
-router.get('/find/:region/:phone', function(req, res, next) {
+router.get('/find/:region/:phone', function (req, res, next) {
   var phone, region;
   region = req.params.region;
   phone = req.params.phone;
@@ -1060,12 +1143,37 @@ router.get('/find/:region/:phone', function(req, res, next) {
       phone: phone
     },
     attributes: ['id', 'nickname', 'portraitUri']
-  }).then(function(user) {
+  }).then(function (user) {
     if (!user) {
       return res.status(404).send('Unknown user.');
     }
     return res.send(new APIResult(200, Utility.encodeResults(user)));
   })["catch"](next);
+});
+
+// 为调试短信, 增加测试环境删除 user 接口
+router.post('/delete_new', function (req, res, next) {
+  var region = req.body.region;
+  var phone = req.body.phone;
+  var isDevelopment = req.app.get('env') === 'development';
+  if (isDevelopment) {
+    console.log({
+      phone: phone,
+      region: region
+    })
+    return User.destroy({
+      where: {
+        phone: phone,
+        region: region
+      },
+      force: true
+    }).then(function (result) {
+      console.log(result);
+      return res.send(new APIResult(200));
+    })["catch"](next);;
+  } else {
+    return res.status(400).send('Only development environment support');
+  }
 });
 
 module.exports = router;

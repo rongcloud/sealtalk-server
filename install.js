@@ -12,7 +12,7 @@ var execShell = function(shell, callback) {
 };
 
 var addSudo = function() {
-    return os.platform() == 'linux' ? 'sudo ' : '';
+    return os.platform() == 'linuxx' ? 'sudo ' : '';
 };
 
 var getMethod = function() {
@@ -56,7 +56,7 @@ var initDB = function() {
     });
 };
 
-var methods = [initGrunt, initDeps, initDB],
+var methods = [/* initGrunt, */ initDeps, initDB],
     index = 0;
 var next = function() {
     showResult('正在初始化，请耐心等待...');
@@ -65,4 +65,3 @@ var next = function() {
 };
 
 next();
-// initDB();

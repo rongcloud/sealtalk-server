@@ -15,7 +15,7 @@
 | [/user/change_password](#post-userchange_password) | 当前登录用户通过旧密码设置新密码 |
 | [/user/set_nickname](#post-userset_nickname) | 设置当前用户的昵称 |
 | [/user/set_portrait_uri](#post-userset_portrait_uri) | 设置当前用户头像地址 |
-| [/user/blacklist](#post-userblacklist) | 获取当前用户黑名单列表 |
+| [/user/blacklist](#get-userblacklist) | 获取当前用户黑名单列表 |
 | [/user/add_to_blacklist](#post-useradd_to_blacklist) | 将好友加入黑名单 |
 | [/user/remove_from_blacklist](#post-userremove_from_blacklist) | 将好友从黑名单中移除 |
 | [/user/get_token](#post-userget_token) | 获取融云 Token |
@@ -25,6 +25,7 @@
 | [/user/sync/:version](#post-usersyncversion) | 同步用户的好友、黑名单、群组、群组成员数据 |
 | [/user/find/:region/:phone](#post-userfindregionphone) | 根据手机号查找用户信息 |
 | [/user/:id](#post-userid) | 获取用户信息 |
+| [/user/favgroups](#get-userfavgroups) | 获取用户信息 |
 
 ## API 说明
 
@@ -547,7 +548,7 @@
 * 400: 错误的请求
 * 500: 应用服务器内部错误
 
-### POST /user/blacklist
+### GET /user/blacklist
 
 获取当前用户黑名单列表。
 
@@ -571,13 +572,15 @@
       "id": "sdf9sd0df98",
       "nickname": "Tom",
       "portraitUri": "http://test.com/user/abc123.jpg",
-      "updatedAt": "TODO: DateTime Format"
+      "updatedAt": "TODO: DateTime Format",
+      "updatedTime": 1560234507805,
     },
     {
       "id": "fgh809fg098",
       "nickname": "Jerry",
       "portraitUri": "http://test.com/user/abc234.jpg",
-      "updatedAt": "TODO: DateTime Format"
+      "updatedAt": "TODO: DateTime Format",
+      "updatedTime": 1560234525563,
     }
   ]
 }
@@ -1014,6 +1017,60 @@
 * id: 用户 Id
 * nickname: 用户昵称
 * portraitUri: 用户头像地址
+
+返回码说明：
+
+* 200: 请求成功
+
+异常返回，返回的 HTTP Status Code 如下：
+
+* 400: 错误的请求
+* 404: 无此用户
+* 500: 应用服务器内部错误
+
+### GET /user/favgroups
+
+获取通讯录群组
+
+#### 前置条件
+
+需要登录才能访问。
+
+#### 请求参数
+
+* offset
+* limit
+
+`注:` 以上参数不填则为 获取通讯录下所有群组
+
+#### 返回结果
+
+正常返回，返回的 HTTP Status Code 为 200，返回的内容如下：
+
+```
+{
+    "code": 200,
+    "result": {
+        "list": [
+            {
+                "id": "kFpN4KiZn",
+                "name": "ceshiqunzu",
+                "portraitUri": "",
+                "creatorId": "kFpN4KiZn",
+                "memberCount": 2,
+                "maxMemberCount": 500,
+                "createdAt": "2019-06-17T10:06:26.000Z",
+                "updatedAt": "2019-06-17T10:06:26.000Z",
+                "updatedTime": 1560765986000,
+                "createdTime": 1560765986000
+            }
+        ],
+        "total": 4,
+        "limit": "1",
+        "offset": "0"
+    }
+}
+```
 
 返回码说明：
 

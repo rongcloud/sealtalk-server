@@ -192,6 +192,7 @@
 		"message": "你好，我是一杯水",
 		"status": 10,
 		"updatedAt": "2017-09-18",
+		"updatedTime": "1560222477000",
 		"user": {
 			"id": "slEcpCI63",
 			"nickname": "一杯水",

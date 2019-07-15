@@ -9,8 +9,12 @@
 | [/group/quit](#post-groupquit) | 退出群组 |
 | [/group/dismiss](#post-groupdismiss) | 解散群组 |
 | [/group/transfer](#post-grouptransfer) | 转让群主角色 |
+| [/group/set_manager](#post-groupset_manager) | 批量增加管理员 |
+| [/group/remove_manager](#post-groupremove_manager) | 删除管理员接口 |
 | [/group/rename](#post-grouprename) | 群组重命名 |
+| [/group/fav](#post-groupfav) | 保存群组至通讯录 |
 | [/group/set_bulletin](#post-groupset_bulletin) | 发布群公告 |
+| [/group/get_bulletin](#get_groupget_bulletin) | 获取群公告 |
 | [/group/set_portrait_uri](#post-groupset_portrait_uri) | 设置群头像 |
 | [/group/set_display_name](#post-groupset_display_name) | 设置群名片 |
 | [/group/:id](#get-groupid) | 获取群信息 |
@@ -147,7 +151,7 @@
 * 200: 请求成功
 * 400: 错误的请求
 * 404: 未知群组
-* 403: 当前用户不创建者
+* 403: 当前用户无权限踢人
 * 500: 服务器内部错误，无法同步数据至 RongCloud IM Server
 
 ### POST /group/quit
@@ -238,11 +242,105 @@
 }
 ```
 
+#### 消息说明
+
+ST:GrpNtf
+
+```
+{
+	data: {
+		oldAdminId: 'uOavJZUpX',
+    oldAdminName: '旧群主名',
+    newAdminId: 'kFpN4KiZn',
+    newAdminName: '新群主名',
+    timestamp: 1560825522194
+	},
+	operatoerUserId: kFpN4KiZn,
+	operation: 'Transfer'
+}
+```
+
 返回码说明：
 
 * 200: 请求成功
 * 400: 当前用户不是创建者
 * 403: 不能把群主转让给自己
+
+### POST /group/set_manager
+
+批量设置管理员
+
+#### 请求参数
+
+```
+{
+	groupId: "KC6kot3ID",
+	memberIds: [ '52dzNbLBZ' ]
+}
+```
+
+* groupId: 群组 Id
+* memberIds: 设置为管理员的用户列表
+
+#### 返回结果
+
+正常返回，返回的 HTTP Status Code 为 200，返回的内容如下：
+
+```
+{
+	"code": 200
+}
+```
+
+#### 角色说明
+
+```
+群主: 0
+成员: 1
+管理员: 2
+```
+
+返回码说明：
+
+* 200: 请求成功
+* 400: 请求参数错误
+* 401: 无设置权限
+* 402: 不在群组中
+* 403: 不能设置群主为管理员
+
+### POST /group/remove_manager
+
+批量删除管理员
+
+#### 请求参数
+
+```
+{
+	groupId: "KC6kot3ID",
+	memberIds: [ '52dzNbLBZ' ]
+}
+```
+
+* groupId: 群组 Id
+* memberIds: 删除管理员权限的用户列表
+
+#### 返回结果
+
+正常返回，返回的 HTTP Status Code 为 200，返回的内容如下：
+
+```
+{
+	"code": 200
+}
+```
+
+返回码说明：
+
+* 200: 请求成功
+* 400: 请求参数错误
+* 401: 无设置权限
+* 402: 不在群组中
+* 403: 不能设置群主为普通成员
 
 ### POST /group/rename
 
@@ -275,6 +373,65 @@
 * 200: 请求成功
 * 400: 群名长度超限
 
+### POST /group/fav
+
+保存群组至通讯录
+
+#### 请求参数
+
+```
+{
+	groupId: "KC6kot3ID"
+}
+```
+
+* groupId: 群组 Id
+
+#### 返回结果
+
+正常返回，返回的 HTTP Status Code 为 200，返回的内容如下：
+
+```
+{
+	"code": 200
+}
+```
+
+返回码说明：
+
+* 200: 请求成功
+* 400: 未知的群组
+* 405: 群组已在通讯录中
+
+### DELETE /group/fav
+
+删除通讯录中的群组
+
+#### 请求参数
+
+```
+{
+	groupId: "KC6kot3ID"
+}
+```
+
+* groupId: 群组 Id
+
+#### 返回结果
+
+正常返回，返回的 HTTP Status Code 为 200，返回的内容如下：
+
+```
+{
+	"code": 200
+}
+```
+
+返回码说明：
+
+* 200: 请求成功
+* 400: 未知的群组
+
 ### POST /group/set_bulletin
 
 发布群公告
@@ -284,7 +441,7 @@
 ```
 {
 	groupId: "KC6kot3ID",
-	bulletin: "@All 明天 4 点下班"
+	bulletin: "明天 4 点下班"
 }
 ```
 
@@ -301,10 +458,58 @@
 }
 ```
 
+#### 消息说明
+
+ST:GrpNtf
+
+```
+{
+	data: {
+		content: "群公告内容",
+		operatorId: 'kFpN4KiZn',
+		operatorName: "随机号"
+	},
+	operatoerUserId: kFpN4KiZn,
+	operation: 'Transfer'
+}
+```
+
 返回码说明：
 
 * 200: 请求成功
 * 400: 非法请求，未知群组或当前不用不是群组
+
+### GET /group/get_bulletin
+
+获取群公告
+
+`例如:` /group/get_bulletin?id=KC6kot3ID
+
+#### 请求参数
+
+```js
+{
+	groupId: "KC6kot3ID"
+}
+```
+
+* id: 群组 Id
+
+#### 返回结果
+
+正常返回，返回的 HTTP Status Code 为 200，返回的内容如下：
+
+```js
+{
+  "code": 200,
+  "result": {
+    "id": 53,
+    "groupId": 1,
+    "content": "111请同学们好好听课哈",
+    "timestamp": 1561019789780
+  }
+}
+```
 
 ### POST /group/set_portrait_uri
 
@@ -397,7 +602,8 @@
 		"maxMemberCount": 500,
 		"creatorId": "I8cpNlo7t",
 		"type": 1,
-		"bulletin": null,
+		"bulletin": "群公告",
+		"bulletinTime": 1560931403360,
 		"deletedAt": null
 	}
 }
@@ -411,6 +617,7 @@
 * creatorId: 群主 Id
 * type: 类型 1 普通群 2 企业群
 * bulletin: 群公告
+* bulletinTime: 群公告发布时间
 * deletedAt: 删除日期
 
 返回码说明：
@@ -442,9 +649,11 @@
 "result": [
 	{
 		"displayName": "",
-		"role": 1,
+		"role": 1,  // 1 为成员, 0 为群主, 2 为管理员
 		"createdAt": "2016-11-22T03:06:13.000Z",
+		"createdTime": 1560222249000,
 		"updatedAt": "2016-11-22T03:06:13.000Z",
+		"updatedTime": 1560222249000,
 		"user": {
 		"id": "xNlpDTUmw",
 		"nickname": "zl01",
@@ -454,7 +663,9 @@
 		"displayName": "",
 		"role": 1,
 		"createdAt": "2016-11-22T03:14:09.000Z",
+		"createdTime": 1560222249000,
 		"updatedAt": "2016-11-22T03:14:09.000Z",
+		"updatedTime": 1560222249000,
 		"user": {
 		"id": "h6nEgcPC7",
 		"nickname": "zl02",
