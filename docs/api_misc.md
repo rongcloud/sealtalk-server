@@ -2,9 +2,9 @@
 
 | 接口地址 | 说明 |
 |---------|-----| 
-| [/misc/latest_update](#get-misclatest_update) | 获取桌面端最新版本 |
-| [/misc/client_version](#get-miscclient_version) | 获取移动端版本信息 |
-| [/misc/send_message](#post-miscsend_message) | Server API 发送消息 |
+| [/misc/latest_update](#get-misclatest_update) | 注册新用户 |
+| [/misc/client_version](#get-miscclient_version) | 用户登录 |
+| [/misc/send_message](#post-miscsend_message) | 通过手机验证码设置新密码 |
 
 ## API 说明
 
@@ -42,6 +42,36 @@ version
 
 * 204: 版本没有变化
 * 400: 版本无效
+
+### GET /misc/mobile_version
+
+Android、iOS 获取更新版本, 返回 sealtalk 标准数据格式
+
+#### 请求参数
+
+```
+无
+```
+
+#### 返回结果
+
+```
+{
+  "code": 200,
+  "result": {
+    "iOS": {
+      "version": "1.0.5",
+      "build": "201607181821",
+      "url": "https://dn-rongcloud.qbox.me/app.plist"
+    },
+    "Android": {
+      "version": "1.0.5",
+      "url": "http://downloads.rongcloud.cn/SealTalk_by_RongCloud_Android_v1_0_5.apk"
+    }
+  }
+}
+
+```
 
 ### GET /misc/client_version
 

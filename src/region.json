@@ -280,6 +280,13 @@
     }
   },
   {
+    "region": "86",
+    "locale": {
+      "en": "China",
+      "zh": "中国"
+    }
+  },
+  {
     "region": "90",
     "locale": {
       "en": "Turkey",
@@ -1516,13 +1523,6 @@
     "locale": {
       "en": "Jamaica",
       "zh": "牙买加"
-    }
-  },
-  {
-    "region": "86",
-    "locale": {
-      "en": "China",
-      "zh": "中国"
     }
   }
 ]

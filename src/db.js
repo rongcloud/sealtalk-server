@@ -1,4 +1,4 @@
-var Blacklist, Config, DataVersion, Friendship, GROUP_CREATOR, GROUP_MEMBER, Group, GroupMember, GroupSync, HTTPError, LoginLog, Sequelize, User, Utility, VerificationCode, VerificationViolation, _, co, dataVersionClassMethods, friendshipClassMethods, groupClassMethods, groupMemberClassMethods, sequelize, userClassMethods, verificationCodeClassMethods;
+var Blacklist, Config, DataVersion, Friendship, Group, GroupMember, GroupSync, HTTPError, LoginLog, Sequelize, User, Utility, VerificationCode, VerificationViolation, _, co, dataVersionClassMethods, friendshipClassMethods, groupClassMethods, groupMemberClassMethods, sequelize, userClassMethods, verificationCodeClassMethods;
 
 Sequelize = require('sequelize');
 
@@ -8,18 +8,30 @@ _ = require('underscore');
 
 Config = require('./conf');
 
-Utility = require('./util/util').Utility;
+var utils = require('./util/util');
+
+var addUpdateTimeToList = utils.addUpdateTimeToList;
+
+Utility = utils.Utility;
 
 HTTPError = require('./util/util').HTTPError;
 
-GROUP_CREATOR = 0;
+var GroupRole = require('./util/enum').GroupRole;
+var GROUP_CREATOR = GroupRole.CREATOR,
+  GROUP_MEMBER = GroupRole.MEMBER,
+  GROUP_MANAGER = GroupRole.MANAGER;
 
-GROUP_MEMBER = 1;
+var GroupFav, GroupBulletin;
 
 sequelize = new Sequelize(Config.DB_NAME, Config.DB_USER, Config.DB_PASSWORD, {
   host: Config.DB_HOST,
   port: Config.DB_PORT,
   dialect: 'mysql',
+  charset: 'utf8',
+  dialectOptions: {
+    charset: 'utf8',
+    collate: 'utf8_general_ci'
+  },
   timezone: '+08:00',
   logging: null
 });
@@ -89,6 +101,91 @@ groupClassMethods = {
   getInfo: function(groupId) {
     return Group.findById(groupId, {
       attributes: ['id', 'name', 'creatorId', 'memberCount']
+    });
+  }
+};
+
+var groupBulletinMethods = {
+  createBulletin: function (groupId, content) {
+    return GroupBulletin.create({
+      groupId: groupId,
+      content: content,
+      timestamp: Date.now()
+    });
+  },
+  getBulletin: function (groupId) {
+    return GroupBulletin.findOne({
+      order: [
+        ['timestamp', 'DESC']
+      ],
+      where: {
+        groupId: groupId
+      },
+      attributes: ['id', 'groupId', 'content', 'timestamp']
+    });
+  }
+};
+
+var groupFavMethods = {
+  createFav: function (userId, groupId) {
+    return GroupFav.create({
+      userId: userId,
+      groupId: groupId
+    });
+  },
+  deleteFac: function (groupId, userIdList) {
+    if (!groupId && !userId) {
+      return Promise.resolve();
+    }
+    var deleteCondition = {};
+    if (groupId) {
+      deleteCondition.groupId = groupId;
+    }
+    if (userIdList) {
+      deleteCondition.userId = userIdList;
+    }
+    return GroupFav.destroy({
+      where: deleteCondition
+    });
+  },
+  hasGroup: function (userId, groupId, callback) {
+    return GroupFav.findOne({
+      where: {
+        userId: userId,
+        groupId: groupId
+      }
+    }).then(function (fav) {
+      return fav ? Promise.resolve(fav) : Promise.reject();
+    });
+  },
+  getGroups: function (userId, limit, offset) {
+    var findParams = {
+      where: { userId: userId },
+      include: {
+        model: Group,
+        attributes: ['id', 'name', 'portraitUri', 'creatorId', 'memberCount', 'maxMemberCount', 'createdAt', 'updatedAt']
+      }
+    };
+    if (utils.isInt(offset) && utils.isInt(limit)) {
+      findParams = Object.assign(findParams, {
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      });
+    }
+    return GroupFav.findAndCountAll(findParams).then(function (result) {
+      var favList = result.rows.filter(function (fav) {
+        return !!fav.group;
+      });
+      var groupList = favList.map(function (fav) {
+        fav = Utility.encodeResults(fav, [['group', 'id'], ['group', 'creatorId']]);
+        return fav.group;
+      });
+      return Promise.resolve({
+        list: addUpdateTimeToList(groupList),
+        total: result.count,
+        limit: limit,
+        offset: offset
+      });
     });
   }
 };
@@ -445,6 +542,55 @@ Group = sequelize.define('groups', {
   ]
 });
 
+GroupFav = sequelize.define('group_fav', {
+  id: {
+    type: Sequelize.INTEGER.UNSIGNED,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  userId: {
+    type: Sequelize.INTEGER.UNSIGNED,
+    allowNull: false,
+    unique: 'groupfavindex'
+  },
+  groupId: {
+    type: Sequelize.INTEGER.UNSIGNED,
+    allowNull: false,
+    unique: 'groupfavindex'
+  }
+}, {
+  classMethods: groupFavMethods
+});
+
+GroupFav.belongsTo(Group, {
+  foreignKey: 'groupId',
+  constraints: false
+});
+
+GroupBulletin = sequelize.define('group_bulletin', {
+  id: {
+    type: Sequelize.INTEGER.UNSIGNED,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  groupId: {
+    type: Sequelize.INTEGER.UNSIGNED,
+    allowNull: false
+  },
+  content: {
+    type: Sequelize.TEXT,
+    allowNull: true
+  },
+  timestamp: {
+    type: Sequelize.BIGINT.UNSIGNED,
+    allowNull: false,
+    defaultValue: 0,
+    comment: '时间戳（版本号）'
+  }
+}, {
+  classMethods: groupBulletinMethods
+});
+
 GroupMember = sequelize.define('group_members', {
   id: {
     type: Sequelize.INTEGER.UNSIGNED,
@@ -615,7 +761,7 @@ VerificationCode = sequelize.define('verification_codes', {
 
 VerificationViolation = sequelize.define('verification_violations', {
   ip: {
-    type: Sequelize.STRING,
+    type: Sequelize.STRING(64),
     allowNull: false,
     primaryKey: true
   },
@@ -669,4 +815,4 @@ LoginLog = sequelize.define('login_logs', {
   updatedAt: false
 });
 
-module.exports = [sequelize, User, Blacklist, Friendship, Group, GroupMember, GroupSync, DataVersion, VerificationCode, LoginLog, VerificationViolation];
+module.exports = [sequelize, User, Blacklist, Friendship, Group, GroupMember, GroupSync, DataVersion, VerificationCode, LoginLog, VerificationViolation, GroupFav, GroupBulletin];

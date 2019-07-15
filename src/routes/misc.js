@@ -26,7 +26,9 @@ ref = require('../db'), sequelize = ref[0], User = ref[1], Blacklist = ref[2], F
 
 FRIENDSHIP_AGREED = 20;
 
-rongCloud.init(Config.RONGCLOUD_APP_KEY, Config.RONGCLOUD_APP_SECRET);
+rongCloud.init(Config.RONGCLOUD_APP_KEY, Config.RONGCLOUD_APP_SECRET, {
+  api: Config.RONGCLOUD_API_URL
+});
 
 router = express.Router();
 
@@ -63,6 +65,22 @@ router.get('/client_version', function(req, res, next) {
         Cache.set('client_version', clientVersionInfo);
       }
       return res.send(clientVersionInfo);
+    });
+  } catch (_error) {
+    err = _error;
+    return next(err);
+  }
+});
+
+router.get('/mobile_version', function (req, res, next) {
+  var err;
+  try {
+    return Cache.get('client_version').then(function (clientVersionInfo) {
+      if (!clientVersionInfo) {
+        clientVersionInfo = jsonfile.readFileSync(path.join(__dirname, '../client_version.json'));
+        Cache.set('client_version', clientVersionInfo);
+      }
+      return res.send(new APIResult(200, clientVersionInfo));
     });
   } catch (_error) {
     err = _error;

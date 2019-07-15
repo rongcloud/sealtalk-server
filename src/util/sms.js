@@ -10,12 +10,13 @@ var request = require('http').request,
 
 var Config = require('../conf.js'),
   apikey = Config.YUNPIAN_API_KEY,
-  smsHost = Config.YUNPIAN_SMS_HOST || 'sms.yunpian.com',
-  internalSmsHost = Config.YUNPIAN_INTERNAL_SMS_HOST || 'us.yunpian.com',
-  sendSmsUri = Config.YUNPIAN_SEND_SMS_URI || '/v2/sms/tpl_single_send.json',
-  getSmsTplUrl = Config.YUNPIAN_GET_TPL_URI || '/v2/tpl/get.json',
-  tplValueKey = '#code#',
-  chineseRegion = '86';
+  SmsHost = Config.YUNPIAN_SMS_HOST || 'sms.yunpian.com',
+  InternalSmsHost = Config.YUNPIAN_INTERNAL_SMS_HOST || 'us.yunpian.com',
+  SendSmsUri = Config.YUNPIAN_SEND_SMS_URI || '/v2/sms/tpl_single_send.json',
+  GetSmsTplUrl = Config.YUNPIAN_GET_TPL_URI || '/v2/tpl/get.json',
+  TplValueKey = '#code#',
+  ChineseRegion = '86',
+  VerificationCodeRange = [100000, 999999];
 
 var SmsTempCache = {
   list: [],
@@ -74,12 +75,12 @@ var getTplLangByRegion = function (region) {
 };
 
 var generateSMSCode = function () {
-  return _.random(1000, 9999);
+  return _.random(VerificationCodeRange[0], VerificationCodeRange[1]);
 };
 
 var post = function (url, content, region) {
-  var isChinese = region == chineseRegion;
-  var hostname = isChinese ? smsHost : internalSmsHost;
+  var isChinese = region == ChineseRegion;
+  var hostname = isChinese ? SmsHost : InternalSmsHost;
   var body = qs.stringify(content);
   var options = {
     hostname: hostname,
@@ -127,7 +128,7 @@ var getSmsTplList = function (region) {
       apikey: apikey
     };
     // Utility.log('YunPian GetSMDTpl: %j', region);
-    post(getSmsTplUrl, content, region).then(function (tempList) {
+    post(GetSmsTplUrl, content, region).then(function (tempList) {
 
       if (!_.isArray(tempList)) {
         // Utility.log('YunPian GetSMDTpl result: %j', ErrorCodeMap.tplFailed.msg);
@@ -190,7 +191,7 @@ var sendCode = function (region, phone) {
   var send = function (tplId) {
     var code = generateSMSCode();
     var tplValue = {};
-    tplValue[tplValueKey] = code;
+    tplValue[TplValueKey] = code;
     var regionPrefix = `+${region}`;
     phone = `${regionPrefix}${phone}`;
     var content = {
@@ -201,7 +202,7 @@ var sendCode = function (region, phone) {
     };
     return new Promise(function (resolve, reject) {
       // Utility.log('YunPian Send: %j', [ content.tpl_id, content.mobile, region, content.tpl_value ].join(' '));
-      post(sendSmsUri, content, region).then(function (result) {
+      post(SendSmsUri, content, region).then(function (result) {
         result = result || {};
         // Utility.log('YunPian Send result: %j', result.code);
 
