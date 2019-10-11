@@ -26,10 +26,14 @@
 | [/user/find/:region/:phone](#post-userfindregionphone) | 根据手机号查找用户信息 |
 | [/user/:id](#post-userid) | 获取用户信息 |
 | [/user/favgroups](#get-userfavgroups) | 获取用户信息 |
+| [/user/set_st_account](#post-userset_st_account) | 设置 SealTalk 号 |
+| [/user/set_gender](#post-userset_gender) | 设置性别 |
+| [/user/set_privacy](#post-userset_privacy) | 个人隐私设置 |
+| [/user/get_privacy](#get-userget_privacy) | 获取个人隐私设置 |
 
 ## API 说明
 
-请注意文档中`返回码`和 HTTP Status Code 之间的区别，`返回码`是 HTTP Status Code 为 `200` 时，返回的 JSON 结果集中 `code` 的值，`code` 值正常返回时，也是 `200` 请注意区分，避免混淆。
+请注意文档中 `返回码` 和 HTTP Status Code 之间的区别，`返回码`是 HTTP Status Code 为 `200` 时，返回的 JSON 结果集中 `code` 的值，`code` 值正常返回时，也是 `200` 请注意区分，避免混淆。
 
 ### POST /user/send_code
 
@@ -573,7 +577,10 @@
       "nickname": "Tom",
       "portraitUri": "http://test.com/user/abc123.jpg",
       "updatedAt": "TODO: DateTime Format",
-      "updatedTime": 1560234507805,
+      "updatedTime": 1560234507805,,
+      "gender": "male", // 性别
+      "stAccount": "b323422", // SealTalk 号
+      "phone": "18701029999" // 手机号
     },
     {
       "id": "fgh809fg098",
@@ -581,6 +588,9 @@
       "portraitUri": "http://test.com/user/abc234.jpg",
       "updatedAt": "TODO: DateTime Format",
       "updatedTime": 1560234525563,
+      "gender": "male", // 性别
+      "stAccount": "b323422", // SealTalk 号
+      "phone": "18701029999" // 手机号
     }
   ]
 }
@@ -800,14 +810,18 @@
       "name": "Team 1",
       "portraitUri": "http://test.com/group/abc123.jpg",
       "creatorId": "fgh89wefd9"
-      "memberCount": 5
+      "memberCount": 5,
+      "isMute": 1, // 0 关闭全员禁言、 1 开启全员禁言
+      "certiStatus": 0 // 0 关闭群认证、 1 开启群认证
     },
     {
       "id": "fgh809fg098",
       "name": "Team 2",
       "portraitUri": "http://test.com/group/abc234.jpg",
       "creatorId": "kl234klj234"
-      "memberCount": 8
+      "memberCount": 8,
+      "isMute": 1, // 0 关闭全员禁言、 1 开启全员禁言
+      "certiStatus": 0 // 0 关闭群认证、 1 开启群认证
     }
   ]
 }
@@ -1009,7 +1023,10 @@
   "result":{
     "id": "sdf9sd0df98",
     "nickname": "Tom",
-    "portraitUri": "http://test.com/user/abc123.jpg"
+    "portraitUri": "http://test.com/user/abc123.jpg", // 用户头像地址
+    "gender": "male", // 性别
+    "stAccount": "b323422", // SealTalk 号
+    "phone": "18701029999" // 手机号
   }
 }
 ```
@@ -1081,3 +1098,83 @@
 * 400: 错误的请求
 * 404: 无此用户
 * 500: 应用服务器内部错误
+
+### POST /user/set_st_account
+
+设置 SealTalk 号
+
+参数|说明|数据类型|是否必填|
+|---|----|------|------|
+|stAccount|sealtalk 号|String| 是|
+
+#### 返回结果
+
+正常返回，返回的 HTTP Status Code 为 200，返回的内容如下：
+
+```
+{	
+	"code": 200, // 200 设置成功  1000 SealTalk 号已存在
+}
+
+```
+
+### POST /user/set_gender
+
+设置性别
+
+参数|说明|数据类型|是否必填|
+|---|----|------|------|
+|gender|性别：男性 male 女性 female|String| 是|
+
+#### 返回结果
+
+正常返回，返回的 HTTP Status Code 为 200，返回的内容如下：
+
+```
+{	
+	"code": 200,
+}
+
+```
+
+### POST /user/set_privacy
+
+个人隐私设置
+
+参数|说明|数据类型|是否必填|
+|---|----|------|------|
+|phoneVerify|允许 通过手机号搜索到我： 0 不允许 1允许 |Number| 否|
+|stSearchVerify|允许 SealTalk 号搜索到我： 0 不允许 1允许 |Number| 否|
+|friVerify|加好友验证： 0 不需验证 1 需验证 |Number| 否|
+|groupVerify|允许直接添加至群聊： 0 不允许 1 允许 |Number| 否|
+
+设置哪个传哪个（可同时设置多个），传空为不设置
+
+#### 返回结果
+
+正常返回，返回的 HTTP Status Code 为 200，返回的内容如下：
+
+```
+{	
+	"code": 200,
+}
+
+```
+## GET /user/get_privacy
+
+获取个人隐私设置
+
+#### 返回结果
+
+正常返回，返回的 HTTP Status Code 为 200，返回的内容如下：
+
+```
+{	
+	"phoneVerify": 0, //  0 不允许 1允许
+	"stSearchVerify": 0, // 0 不允许 1允许
+	"friVerify": 0,// 0 不需验证 1 需验证
+	"groupVerify": 1,// 0 不允许 1 允许
+}
+
+```
+

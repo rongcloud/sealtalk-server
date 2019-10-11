@@ -1,4 +1,4 @@
-var Blacklist, Config, DataVersion, Friendship, Group, GroupMember, GroupSync, HTTPError, LoginLog, Sequelize, User, Utility, VerificationCode, VerificationViolation, _, co, dataVersionClassMethods, friendshipClassMethods, groupClassMethods, groupMemberClassMethods, sequelize, userClassMethods, verificationCodeClassMethods;
+var Blacklist, Config, DataVersion, Friendship, Group, GroupMember, GroupReceiver, ScreenStatus, GroupSync, HTTPError, LoginLog, Sequelize, User, Utility, VerificationCode, VerificationViolation, _, co, dataVersionClassMethods, friendshipClassMethods, groupClassMethods, groupMemberClassMethods, sequelize, userClassMethods, verificationCodeClassMethods;
 
 Sequelize = require('sequelize');
 
@@ -16,6 +16,7 @@ Utility = utils.Utility;
 
 HTTPError = require('./util/util').HTTPError;
 
+var ENUM = require('./util/enum');
 var GroupRole = require('./util/enum').GroupRole;
 var GROUP_CREATOR = GroupRole.CREATOR,
   GROUP_MEMBER = GroupRole.MEMBER,
@@ -82,6 +83,40 @@ userClassMethods = {
     }).then(function(count) {
       return count === 0;
     });
+  },
+  hasGroupVerify: function (userId) {
+    return User.findOne({
+      where: {
+        id: userId
+      },
+      attributes: ['groupVerify']
+    }).then(function (result) {
+      return result && result.groupVerify == ENUM.CertiStatus.OPENED;
+    });
+  },
+  batchGroupVerify: function (userIdList) {
+    return User.findAll({
+      where: {
+        id: {
+          $in: userIdList
+        }
+      },
+      attributes: ['id', 'groupVerify']
+    }).then(function (list) {
+      var veirfyOpenedUserList = [],
+        verifyClosedUserList = [];
+      list.forEach(function (user) {
+        if (user.groupVerify == ENUM.CertiStatus.OPENED) {
+          veirfyOpenedUserList.push(user.id);
+        } else {
+          verifyClosedUserList.push(user.id);
+        }
+      });
+      return {
+        opened: veirfyOpenedUserList,
+        closed: verifyClosedUserList
+      };
+    });
   }
 };
 
@@ -102,6 +137,86 @@ groupClassMethods = {
     return Group.findById(groupId, {
       attributes: ['id', 'name', 'creatorId', 'memberCount']
     });
+  },
+  hasManagerRole: function (groupId, userId) {
+    var hasManagerRole = [GROUP_CREATOR, GROUP_MANAGER];
+    return GroupMember.findOne({
+      where: {
+        groupId: groupId,
+        memberId: userId
+      },
+      attributes: ['role']
+    }).then(function (result) {
+      if (!result) {
+        return false;
+      }
+      var role = result.role;
+      return hasManagerRole.indexOf(role) !== -1;
+    });
+  },
+  getGroupVerify: function (groupId, requesterId) {
+    if (requesterId) {
+      return GroupMember.findOne({
+        where: {
+          groupId: groupId,
+          memberId: requesterId
+        },
+        include: {
+          model: Group,
+          as: 'group',
+          attributes: ['id', 'name', 'portraitUri', 'certiStatus']
+        }
+      }).then(function (result) {
+        var isVerify = result && result.group &&
+          result.group.certiStatus == ENUM.CertiStatus.OPENED &&
+          ENUM.OptPermissionRole.indexOf(result.role) === -1;
+        return {
+          isVerify: isVerify,
+          group: result ? result.group : {}
+        };
+      });
+    } else {
+      return Group.findOne({
+        where: {
+          id: groupId
+        },
+        attributes: ['id', 'name', 'portraitUri', 'certiStatus']
+      }).then(function (result) {
+        var isVerify = result && result.certiStatus == ENUM.CertiStatus.OPENED;
+        return {
+          isVerify: isVerify,
+          group: result ? result : {}
+        }
+      });
+    }
+  },
+  hasGroupVerify: function (groupId, requesterId) {
+    if (requesterId) {
+      return GroupMember.findOne({
+        where: {
+          groupId: groupId,
+          memberId: requesterId
+        },
+        include: {
+          model: Group,
+          as: 'group',
+          attributes: ['id', 'name', 'certiStatus']
+        }
+      }).then(function (result) {
+        return result && result.group &&
+          result.group.certiStatus == ENUM.CertiStatus.OPENED &&
+          ENUM.OptPermissionRole.indexOf(result.role) === -1;
+      });
+    } else {
+      return Group.findOne({
+        where: {
+          id: groupId
+        },
+        attributes: ['certiStatus']
+      }).then(function (result) {
+        return result && result.certiStatus == ENUM.CertiStatus.OPENED;;
+      });
+    }
   }
 };
 
@@ -122,6 +237,177 @@ var groupBulletinMethods = {
         groupId: groupId
       },
       attributes: ['id', 'groupId', 'content', 'timestamp']
+    });
+  }
+};
+
+var groupReceiverMethods = {
+  deleteByGroup: function (groupId, userId) {
+    return GroupReceiver.destroy({
+      where: {
+        groupId: groupId,
+        userId: userId
+      }
+    });
+  },
+  deleteByGroupManager: function (groupId, managerIds) {
+    return GroupReceiver.destroy({
+      where: {
+        groupId: groupId,
+        userId: {
+          $or: managerIds
+        }
+      }
+    });
+  },
+  addDeleteUser: function (deleteUsers, userId) {
+    var deletedUserList = groupReceiverMethods.getDeletedUserList(deleteUsers);
+    deletedUserList.push(userId);
+    return JSON.stringify(deletedUserList);
+  },
+  getDeletedUserList: function (deleteUsers) {
+    var deletedUserList = [];
+    try {
+      deletedUserList = JSON.parse(deleteUsers);
+    } catch(e) {
+
+    }
+    return deletedUserList;
+  },
+  deleteByUser: function (receiverList, userId) {
+    return sequelize.transaction(function (t) {
+      return sequelize.Promise.each(receiverList, function (receiver) {
+        var deletedUsers = receiver.deletedUsers;
+        deleteUsers = groupReceiverMethods.addDeleteUser(deletedUsers, userId);
+        return GroupReceiver.update({
+          deletedUsers: deleteUsers
+        }, {
+            where: {
+              id: receiver.id
+            },
+            transaction: t
+          });
+      });
+    });
+  },
+  updateToExpired: function (groupId, memberIds) {
+    return GroupReceiver.update({
+      status: ENUM.GroupReceiverStatus.EXPIRED
+    }, {
+      where: {
+        groupId: groupId,
+        receiverId: {
+          $in: memberIds
+        },
+        status: ENUM.GroupReceiverStatus.WAIT
+      }
+    });
+  },
+  bulkUpsert: function (group, requesterId, receiverIdList, operatorList, type, status) {
+    var groupId = group.id;
+    var updateReceiverIdList = [],
+      createReceiverList = [];
+    var optMapReceiver = [];
+    operatorList.forEach(function (userId) {
+      optMapReceiver.push({
+        userId: userId,
+        receiverId: {
+          $in: receiverIdList
+        }
+      });
+    });
+    var where = {
+      groupId: groupId,
+      // requesterId: requesterId,
+      type: type,
+      $or: optMapReceiver
+    };
+    if (type === ENUM.GroupReceiverType.MANAGER) {
+      where.requesterId = requesterId;
+    }
+    return GroupReceiver.findAll({
+      where: where,
+      attributes: ['receiverId']
+    }).then(function (list) {
+      list.forEach(function (receiver) {
+        updateReceiverIdList.push(receiver.receiverId);
+      });
+      receiverIdList.forEach(function (receiverId) {
+        var groupReceiver = {
+          userId: receiverId,
+          groupId: groupId,
+          groupName: group.name,
+          groupPortraitUri: group.portraitUri,
+          requesterId: requesterId,
+          receiverId: receiverId,
+          status: status,
+          type: type,
+          isRead: 0,
+          timestamp: Date.now()
+        };
+        if (updateReceiverIdList.indexOf(receiverId) === -1) {
+          if (type === ENUM.GroupReceiverType.MEMBER) {
+            createReceiverList.push(utils.parse(groupReceiver));
+          } else {
+            operatorList.forEach(function (userId) {
+              groupReceiver.userId = userId;
+              createReceiverList.push(utils.parse(groupReceiver));
+            });
+          }
+        }
+      });
+      console.log('update params', {
+        groupId: groupId,
+        requesterId: requesterId,
+        type: type,
+        $or: optMapReceiver
+      });
+      var updateData = {
+        status: status,
+        timestamp: Date.now()
+      }
+      if (type === ENUM.GroupReceiverType.MEMBER) {
+        updateData.requesterId = requesterId;
+      }
+      return GroupReceiver.update(updateData, {
+        where: where
+      });
+    }).then(function () {
+      return GroupReceiver.bulkCreate(createReceiverList);
+    });
+  },
+  batchDetail: function (where) {
+    var receiverQueryInclude = [{
+      model: User,
+      as: 'requester',
+      attributes: ['id', 'nickname']
+    }, {
+      model: User,
+      as: 'receiver',
+      attributes: ['id', 'nickname']
+    }, {
+      model: Group,
+      as: 'group',
+      attributes: ['id', 'name']
+    }];
+    return GroupReceiver.findAll({
+      where: where,
+      attributes: ['id', 'groupId', 'groupName', 'type', 'status', 'deletedUsers', 'timestamp'],
+      order: [
+        ['timestamp', 'DESC']
+      ],
+      include: receiverQueryInclude
+    }).then(function (list) {
+      return list.map(function (item) {
+        item = item.dataValues;
+        item.group = {
+          name: item.groupName,
+          id: item.groupId
+        };
+        delete item.groupName;
+        delete item.groupId;
+        return item;
+      });
     });
   }
 };
@@ -163,7 +449,7 @@ var groupFavMethods = {
       where: { userId: userId },
       include: {
         model: Group,
-        attributes: ['id', 'name', 'portraitUri', 'creatorId', 'memberCount', 'maxMemberCount', 'createdAt', 'updatedAt']
+        attributes: ['id', 'name', 'portraitUri', 'creatorId','isMute', 'certiStatus', 'memberCount', 'maxMemberCount', 'createdAt', 'updatedAt']
       }
     };
     if (utils.isInt(offset) && utils.isInt(limit)) {
@@ -215,7 +501,7 @@ groupMemberClassMethods = {
         groupMembers.some(function(groupMember) {
           if (memberId === groupMember.memberId) {
             if (!groupMember.isDeleted) {
-              throw new HTTPError('Should not add exist member to the group.', 400);
+              // throw new HTTPError('Should not add exist member to the group.', 400);
             }
             return isUpdateMember = true;
           } else {
@@ -375,6 +661,36 @@ User = sequelize.define('users', {
     allowNull: false,
     defaultValue: ''
   },
+  gender: {
+    type: Sequelize.STRING(32),
+    allowNull: false,
+    defaultValue: 'male'
+  },
+  stAccount: {
+    type: Sequelize.STRING(32),
+    allowNull: false,
+    defaultValue: '',
+  },
+  phoneVerify: {
+    type: Sequelize.INTEGER.UNSIGNED,
+    allowNull: false,
+    defaultValue: 1
+  },
+  stSearchVerify: {
+    type: Sequelize.INTEGER.UNSIGNED,
+    allowNull: false,
+    defaultValue: 1
+  },
+  friVerify: {
+    type: Sequelize.INTEGER.UNSIGNED,
+    allowNull: false,
+    defaultValue: 1
+  },
+  groupVerify: {
+    type: Sequelize.INTEGER.UNSIGNED,
+    allowNull: false,
+    defaultValue: 1
+  },
   groupCount: {
     type: Sequelize.INTEGER.UNSIGNED,
     allowNull: false,
@@ -465,7 +781,7 @@ Friendship = sequelize.define('friendships', {
   status: {
     type: Sequelize.INTEGER.UNSIGNED,
     allowNull: false,
-    comment: '10: 请求, 11: 被请求, 20: 同意, 21: 忽略, 30: 被删除'
+    comment: '10: 请求, 11: 被请求, 20: 同意, 21: 忽略, 30: 被删除, 31: 被拉黑'
   },
   timestamp: {
     type: Sequelize.BIGINT.UNSIGNED,
@@ -524,6 +840,27 @@ Group = sequelize.define('groups', {
   bulletin: {
     type: Sequelize.TEXT,
     allowNull: true
+  },
+  certiStatus: {
+    type: Sequelize.INTEGER.UNSIGNED,
+    allowNull: false,
+    defaultValue: 1
+  },
+  isMute: {
+    type: Sequelize.INTEGER.UNSIGNED,
+    allowNull: false,
+    defaultValue: 0
+  },
+  clearStatus: {
+    type: Sequelize.INTEGER.UNSIGNED,
+    allowNull: false,
+    defaultValue: 0
+  },
+  clearTimeAt: {
+    type: Sequelize.BIGINT.UNSIGNED,
+    allowNull: false,
+    defaultValue: 0,
+    comment: '设置清除时间'
   },
   timestamp: {
     type: Sequelize.BIGINT.UNSIGNED,
@@ -815,4 +1152,144 @@ LoginLog = sequelize.define('login_logs', {
   updatedAt: false
 });
 
-module.exports = [sequelize, User, Blacklist, Friendship, Group, GroupMember, GroupSync, DataVersion, VerificationCode, LoginLog, VerificationViolation, GroupFav, GroupBulletin];
+GroupReceiver = sequelize.define('group_receiver', {
+  id: {
+    type: Sequelize.INTEGER.UNSIGNED,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  userId: {
+    type: Sequelize.INTEGER.UNSIGNED,
+    allowNull: false
+  },
+  groupId: {
+    type: Sequelize.INTEGER.UNSIGNED,
+    allowNull: false
+  },
+  groupName: {
+    type: Sequelize.STRING(32),
+    allowNull: false,
+    defaultValue: ''
+  },
+  groupPortraitUri: {
+    type: Sequelize.STRING(256),
+    allowNull: false,
+    defaultValue: ''
+  },
+  requesterId: {
+    type: Sequelize.INTEGER.UNSIGNED,
+    allowNull: false
+  },
+  receiverId: {
+    type: Sequelize.INTEGER.UNSIGNED,
+    allowNull: false
+  },
+  type: {
+    type: Sequelize.INTEGER.UNSIGNED,
+    allowNull: false,
+    comment: '0: 管理者审核、1: 被邀请者审核'
+  },
+  status: {
+    type: Sequelize.INTEGER.UNSIGNED,
+    allowNull: false,
+    comment: '0: 已忽略、1: 已同意、2: 待审核'
+  },
+  deletedUsers: {
+    type: Sequelize.STRING(256),
+    allowNull: false,
+    defaultValue: ''
+  },
+  isRead: {
+    type: Sequelize.INTEGER.UNSIGNED,
+    allowNull: false
+  },
+  joinInfo: {
+    type: Sequelize.STRING(256),
+    allowNull: false,
+    defaultValue: ''
+  },
+  timestamp: {
+    type: Sequelize.BIGINT,
+    allowNull: false,
+    defaultValue: 0,
+    comment: '时间戳（版本号）'
+  }
+},{
+  classMethods: groupReceiverMethods
+});
+
+GroupReceiver.belongsTo(User, {
+  foreignKey: 'requesterId',
+  targetKey: 'id',
+  as: 'requester'
+});
+
+GroupReceiver.belongsTo(User, {
+  foreignKey: 'receiverId',
+  targetKey: 'id',
+  as: 'receiver'
+});
+
+GroupReceiver.belongsTo(Group, {
+  foreignKey: 'groupId',
+  targetKey: 'id',
+  as: 'group'
+});
+
+ScreenStatus = sequelize.define('screen_statuses',{
+  id: {
+    type: Sequelize.INTEGER.UNSIGNED,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  operateId: {
+    type: Sequelize.CHAR(40),
+    allowNull: false
+  },
+  conversationType: {
+    type: Sequelize.INTEGER.UNSIGNED,
+    allowNull: false
+  },
+  status: {
+    type: Sequelize.INTEGER.UNSIGNED,
+    allowNull: false,
+    comment: '截屏通知： 0 关闭 1 开启'
+  }
+}, {
+  indexes: [
+    {
+      unique: true,
+      fields: ['operateId']
+    }
+  ]
+});
+
+// var salt = Utility.random(1000, 9999);
+// var hash = Utility.hash('123456', salt);
+// var test = {
+//   region: '86',
+//   phone: 16333100000,
+//   nickname: '',
+//   passwordHash: hash,
+//   passwordSalt: salt.toString()
+// };
+// var arr = [];
+// for (var i = 0; i < 10000; i++) {
+//   var t = JSON.parse(JSON.stringify(test));
+//   t.phone = t.phone + i;
+//   t.nickname = i;
+//   arr.push(t);
+// }
+
+// var phoneArr = arr.map(function (item) {
+//   return item.phone;
+// });
+
+// User.bulkCreate(arr).then(function (result) {
+//   console.log(result.length);
+//   console.log('success');
+// }).catch(function (e) {
+//   // console.log('error', e);
+// })
+
+module.exports = [sequelize, User, Blacklist, Friendship, Group, GroupMember, GroupSync, DataVersion, VerificationCode, LoginLog, VerificationViolation, GroupFav, GroupBulletin, GroupReceiver, ScreenStatus];

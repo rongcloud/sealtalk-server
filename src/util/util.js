@@ -259,7 +259,7 @@ var isInt = function (number) {
   return Object.prototype.toString.call(number) === '[object Number]' && !isNaN(number);
 };
 
-var addUpdateTimeToList = (list, options) => {
+var addUpdateTime = function (item, options) {
   options = options || {};
   var objName = options.objName,
     updateKeys = options.updateKeys || ['updatedAt', 'createdAt'];
@@ -267,9 +267,28 @@ var addUpdateTimeToList = (list, options) => {
     updatedAt: 'updatedTime',
     createdAt: 'createdTime'
   };
-  list.forEach((item) => {
+  item = (objName ? item[objName] : item) || {};
+  updateKeys.forEach(function (updateKey) {
+    var updatedData = item[updateKey];
+    if (updatedData) {
+      updateKey = updateKeyMap[updateKey] || updateKey + 'Time';
+      item[updateKey] = +new Date(updatedData);
+    }
+  });
+  return item;
+};
+
+var addUpdateTimeToList = function (list, options) {
+  options = options || {};
+  var objName = options.objName,
+    updateKeys = options.updateKeys || ['updatedAt', 'createdAt'];
+  var updateKeyMap = {
+    updatedAt: 'updatedTime',
+    createdAt: 'createdTime'
+  };
+  list.forEach(function (item) {
     item = (objName ? item[objName] : item) || {};
-    updateKeys.forEach((updateKey) => {
+    updateKeys.forEach(function (updateKey) {
       var updatedData = item[updateKey];
       if (updatedData) {
         updateKey = updateKeyMap[updateKey] || updateKey + 'Time';
@@ -278,6 +297,10 @@ var addUpdateTimeToList = (list, options) => {
     });
   });
   return list;
+};
+
+var parse = function (obj) {
+  return JSON.parse(JSON.stringify(obj));
 };
 
 module.exports = {
@@ -293,5 +316,8 @@ module.exports = {
   isArray,
   isInt,
 
-  addUpdateTimeToList
+  addUpdateTimeToList,
+  addUpdateTime,
+
+  parse
 };

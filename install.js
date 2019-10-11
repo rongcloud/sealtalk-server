@@ -27,6 +27,14 @@ var initGrunt = function() {
     });
 };
 
+var initSequelize = function () {
+    var shell = addSudo() + 'npm install sequelize@3.8.0';
+    execShell(shell, function (err, stdout) {
+        showResult(err, stdout);
+        next();
+    });
+};
+
 var initDeps = function() {
     var shell = addSudo() + 'npm install';
     execShell(shell, function(err, stdout) {
@@ -39,24 +47,32 @@ var initDB = function() {
     var shell = 'node sync.js --harmony';
     execShell(shell, function(err, stdout) {
         showResult(err, stdout);
+        next();
+    });
+};
+
+var updateDB = function() {
+    var shell = addSudo() + 'node src/updateDB.js';
+    execShell(shell, function(err, stdout) {
+        showResult(err, stdout);
         var logs = ['',
-            '初始化已完成，请在下方命令行执行: ', 
+            '初始化已完成，请在下方命令行执行: ',
             '-----------------------------------------------',
             '1、设置环境变量:                               |',
-            '                                               |', 
-            '   Windows  : set NODE_ENV=development         |', 
-            '                                               |', 
-            '   Mac/Linux: export NODE_ENV=development      |',  
+            '                                               |',
+            '   Windows  : set NODE_ENV=development         |',
+            '                                               |',
+            '   Mac/Linux: export NODE_ENV=development      |',
             '-----------------------------------------------',
-            '2、启动服务:                                   |', 
-            '                                               |', 
+            '2、启动服务:                                   |',
+            '                                               |',
             '   grunt nodemon                               |',
             '-----------------------------------------------'];
         !err && showResult(logs.join('\n'));
     });
-};
+}
 
-var methods = [/* initGrunt, */ initDeps, initDB],
+var methods = [/* initGrunt, */ initDeps, initSequelize, initDB, updateDB],
     index = 0;
 var next = function() {
     showResult('正在初始化，请耐心等待...');
