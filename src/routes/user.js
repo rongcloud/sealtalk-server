@@ -59,6 +59,8 @@ FRIENDSHIP_AGREED = 20;
 
 FRIENDSHIP_DELETED = 30;
 
+FRIENDSHIP_BLACK = 31; 
+
 rongCloud.init(Config.RONGCLOUD_APP_KEY, Config.RONGCLOUD_APP_SECRET, {
   api: Config.RONGCLOUD_API_URL
 });
@@ -416,6 +418,7 @@ router.post('/register', function (req, res, next) {
                 Session.setAuthCookie(res, user.id);
                 Session.setNicknameToCache(user.id, nickname);
                 var isDebug = req.app.get('env') !== 'production';
+                reportRegister(verification.phone, verification.region, isDebug);
                 return res.send(new APIResult(200, Utility.encodeResults({
                   id: user.id
                 })));
@@ -714,7 +717,7 @@ router.post('/add_to_blacklist', function (req, res, next) {
             return DataVersion.updateBlacklistVersion(currentUserId, timestamp).then(function () {
               Cache.del("user_blacklist_" + currentUserId);
               return Friendship.update({
-                status: FRIENDSHIP_DELETED,
+                status: FRIENDSHIP_BLACK,
                 displayName: '',
                 message: '',
                 timestamp: timestamp
@@ -762,9 +765,30 @@ router.post('/remove_from_blacklist', function (req, res, next) {
         }).then(function () {
           return DataVersion.updateBlacklistVersion(currentUserId, timestamp).then(function () {
             Cache.del("user_blacklist_" + currentUserId);
-            return res.send(new APIResult(200));
-          });
-        })["catch"](next);
+            Friendship.update({
+              status: FRIENDSHIP_AGREED
+            },{
+              where: {
+                userId: currentUserId,
+                friendId: friendId,
+                status: FRIENDSHIP_BLACK
+              }
+            }).then(function (result) {
+              console.log('result--remove black',result);
+              if(result) {
+                console.log('result--remove black',result);
+                Cache.del("friendship_profile_displayName_" + currentUserId + "_" + friendId);
+                Cache.del("friendship_profile_user_" + currentUserId + "_" + friendId);
+                Cache.del("friendship_all_" + currentUserId);
+                Cache.del("friendship_all_" + friendId);
+                return res.send(new APIResult(200));
+              }
+            }).catch(function(err) {
+              console.log(err);
+              return res.send(new APIResult(200));
+            })
+          })["catch"](next);
+        });
     }
   });
 });
@@ -837,7 +861,7 @@ router.get('/blacklist', function (req, res, next) {
         attributes: [],
         include: {
           model: User,
-          attributes: ['id', 'nickname', 'portraitUri', 'updatedAt']
+          attributes: ['id', 'nickname', 'portraitUri', 'gender', 'stAccount', 'phone','updatedAt']
         }
       }).then(function (dbBlacklist) {
         var results;
@@ -923,7 +947,7 @@ router.get('/groups', function (req, res, next) {
         include: [
           {
             model: Group,
-            attributes: ['id', 'name', 'portraitUri', 'creatorId', 'memberCount', 'maxMemberCount']
+            attributes: ['id', 'name', 'portraitUri', 'creatorId', 'memberCount', 'maxMemberCount','isMute','certiStatus']
           }
         ]
       }).then(function (groups) {
@@ -1106,28 +1130,7 @@ router.get('/favgroups', function (req, res, next) {
   })['catch'](next);
 });
 
-router.get('/:id', function (req, res, next) {
-  var userId;
-  userId = req.params.id;
-  userId = Utility.decodeIds(userId);
-  return Cache.get("user_" + userId).then(function (user) {
-    if (user) {
-      return res.send(new APIResult(200, user));
-    } else {
-      return User.findById(userId, {
-        attributes: ['id', 'nickname', 'portraitUri']
-      }).then(function (user) {
-        var results;
-        if (!user) {
-          return res.status(404).send('Unknown user.');
-        }
-        results = Utility.encodeResults(user);
-        Cache.set("user_" + userId, results);
-        return res.send(new APIResult(200, results));
-      });
-    }
-  })["catch"](next);
-});
+
 
 router.get('/find/:region/:phone', function (req, res, next) {
   var phone, region;
@@ -1176,4 +1179,191 @@ router.post('/delete_new', function (req, res, next) {
   }
 });
 
+//设置性别
+router.post('/set_gender', function (req, res, next) {
+  var gender, currentUserId;
+  gender = req.body.gender;
+  currentUserId = Session.getCurrentUserId(req);
+  
+  if(['male','female'].indexOf(gender) == -1){
+    return res.status(400).send('Parameter error.');
+  }
+  return User.update({
+    gender: gender
+  }, {
+    where: {
+      id: currentUserId
+    }
+  }).then(function() {
+    console.log('------');
+    return res.send(new APIResult(200));
+  }, function(err){
+    console.log('err', err);
+  })["catch"](next);
+});
+
+//设置 SealTalk 号
+router.post('/set_st_account', function (req, res, next) {
+  var stAccount, currentUserId;
+  stAccount = req.body.stAccount;
+  currentUserId = Session.getCurrentUserId(req);
+  if(stAccount.length < 6 || stAccount.length > 20) {
+    return res.status(400).send('Incorrect parameter length.');
+  }
+  if(!stAccount.match(/^[a-zA-Z][a-zA-Z0-9_-]*$/)) {
+    return res.status(400).send('Not letter beginning or invalid symbol.');
+  }
+  User.findOne({
+    where: {
+      stAccount: stAccount
+    }
+  }).then(function(user) {
+    if(user) {
+      return res.send(new APIResult(1000)); 
+    }
+    return User.update({
+      stAccount: stAccount
+    }, {
+      where: {
+        id: currentUserId
+      }
+    }).then(function() {
+      res.send(new APIResult(200));
+    })["catch"](next);
+  })
+})
+
+//个人隐私设置
+router.post('/set_privacy', function (req, res, next) {
+  var currentUserId,phoneVerify, stSearchVerify, friVerify, groupVerify;
+  currentUserId = Session.getCurrentUserId(req);
+  phoneVerify = req.body.phoneVerify;
+  stSearchVerify = req.body.stSearchVerify;
+  friVerify = req.body.friVerify;
+  groupVerify = req.body.groupVerify;
+  console.log(phoneVerify == undefined)
+  if(phoneVerify == undefined && stSearchVerify == undefined && friVerify == undefined && groupVerify == undefined){
+    return res.status(400).send('Parameter is empty.');
+  }
+  for(var key in req.body) {
+   if(req.body[key]){
+     if([0,1].indexOf(req.body[key]) == -1) {
+      return res.status(400).send('Illegal parameter .');
+     }
+   }
+  }
+  return User.findOne({
+    where: {
+      id: currentUserId
+    },
+    attributes: ['phoneVerify','stSearchVerify','friVerify','groupVerify']
+  }).then(function (result) {
+    return User.update({
+      phoneVerify: phoneVerify == undefined ? result.phoneVerify : phoneVerify,
+      stSearchVerify: stSearchVerify == undefined ? result.stSearchVerify : stSearchVerify,
+      friVerify: friVerify == undefined ? result.friVerify : friVerify,
+      groupVerify: groupVerify == undefined ? result.groupVerify : groupVerify
+      }, {
+        where: {
+          id: currentUserId
+        }
+      }).then(function() {
+        res.send(new APIResult(200));
+      })
+  })["catch"](next);
+})
+
+// 获取个人隐私
+router.get('/get_privacy', function (req, res, next) {
+  var currentUserId = Session.getCurrentUserId(req);
+  User.findOne({
+    where: {
+      id: currentUserId
+    },
+    attributes: ['id', 'phoneVerify', 'stSearchVerify', 'friVerify', 'groupVerify']
+  }).then(function(user) {
+    res.send(new APIResult(200, Utility.encodeResults(user)));
+    // res.send(new APIResult(200,user));
+  })["catch"](next);
+})
+
+// 通过 手机号 或 SealTalk 号查用户
+router.get('/find_user', function (req, res, next) {
+  var phone, region, stAccount;
+  region = req.query.region;
+  phone = req.query.phone;
+  stAccount = req.query.st_account;
+  console.log(region == undefined && phone == undefined && stAccount == undefined);
+  if(region == undefined && phone == undefined && stAccount == undefined){
+    return res.status(400).send('Parameter is empty.');
+  }
+  if(phone) {
+    var regionName = regionMap[region];
+    if (regionName && !validator.isMobilePhone(phone, regionName)) {
+      return res.status(400).send('Invalid region and phone number.');
+    }
+    return User.findOne({
+      where: {
+        region: region,
+        phone: phone
+      },
+      attributes: ['id', 'nickname','gender', 'portraitUri', 'stAccount', 'phoneVerify']
+    }).then(function (user) {
+      console.log(user)
+      if (!user || user.phoneVerify == 0) {
+        return res.status(404).send('Unknown user.');
+      }
+      return res.send(new APIResult(200, Utility.encodeResults(user)));
+    })["catch"](next);
+  }else {
+    console.log(stAccount)
+    return User.findOne({
+      where: {
+        stAccount: stAccount
+      },
+      attributes: ['id', 'nickname','gender', 'portraitUri', 'stAccount', 'stSearchVerify']
+    }).then(function (user) {
+      if (!user || user.stSearchVerify == 0) {
+        return res.status(404).send('Unknown user.');
+      }
+      return res.send(new APIResult(200, Utility.encodeResults(user)));
+    })
+  }
+  
+});
+
+router.get('/:id', function (req, res, next) {
+  var userId;
+  userId = req.params.id;
+  userId = Utility.decodeIds(userId);
+  // return Cache.get("user_" + userId).then(function (user) {
+    // if (user) { //2.1.0 可直接修改 gender stAccount Cache 无法快速更新
+    //   console.log('---',user);
+    //   return res.send(new APIResult(200, user));
+    // } else {
+    //   return User.findById(userId, {
+    //     attributes: ['id', 'nickname', 'portraitUri','gender','stAccount','phone']
+    //   }).then(function (user) {
+    //     var results;
+    //     if (!user) {
+    //       return res.status(404).send('Unknown user.');
+    //     }
+    //     results = Utility.encodeResults(user);
+    //     Cache.set("user_" + userId, results);
+    //     return res.send(new APIResult(200, results));
+    //   });
+    // }
+  // })
+  return User.findById(userId, {
+        attributes: ['id', 'nickname', 'portraitUri','gender','stAccount','phone']
+      }).then(function (user) {
+        var results;
+        if (!user) {
+          return res.status(404).send('Unknown user.');
+        }
+        results = Utility.encodeResults(user);
+        Cache.set("user_" + userId, results);
+        return res.send(new APIResult(200, results));
+      })["catch"](next);;
+});
 module.exports = router;

@@ -5,7 +5,9 @@
 | [/misc/latest_update](#get-misclatest_update) | 注册新用户 |
 | [/misc/client_version](#get-miscclient_version) | 用户登录 |
 | [/misc/send_message](#post-miscsend_message) | 通过手机验证码设置新密码 |
-
+| [/misc/set_screen_capture](#post-miscset_screen_capture) | 截屏通知设置 |100%|
+| [/misc/get_screen_capture](#post-miscget_screen_capture) | 获取截屏通知状态 |100%|
+| [/misc/send_sc_msg](#post-miscsend_sc_msg) | 发送截屏通知消息 |100%|
 ## API 说明
 
 ### GET /misc/latest_update?version=1.0.0
@@ -138,3 +140,87 @@ Server API 发送消息
 * 403: PRIVATE 与对方不是好友
 * 403: GROUP 发送消息用户不在群组中
 * 403: 未知会话类型，默认支持 PRIVATE、GROUP
+
+### POST /misc/set_screen_capture
+
+截屏通知设置
+
+参数|说明|数据类型|是否必填|
+|---|----|------|------|
+|conversationType|会话类型：1 单聊、3 群聊|Number| 是|
+|targetId| 目标 Id|String| 是|
+|noticeStatus| 设置状态： 0 关闭 1 打开|Number| 是|
+
+#### 消息体结构
+
+```
+开关截屏通知消息 ObjectName ：ST:ConNtf
+{
+    operatorUserId: encodedUserId,
+    operation: 'openScreenNtf',  // openScreenNtf: 打开、  closeScreenNtf: 关闭
+}
+```
+
+#### 返回结果
+
+正常返回，返回的 HTTP Status Code 为 200，返回的内容如下：
+
+```
+{	
+	"code": 200,
+}
+
+```
+
+### POST /misc/get_screen_capture
+
+获取截屏通知设置
+
+参数|说明|数据类型|是否必填|
+|---|----|------|------|
+|conversationType|会话类型：1 单聊、3 群聊|Number| 是|
+|targetId| 目标 Id|String| 是|
+
+#### 返回结果
+
+正常返回，返回的 HTTP Status Code 为 200，返回的内容如下：
+
+```
+{	
+	"code": 200,
+	"result": {
+		"status": 0 // 0 关闭 1 打开		
+	}
+}
+
+```
+
+### POST /misc/send_sc_msg
+
+发送截屏通知消息
+
+参数|说明|数据类型|是否必填|
+|---|----|------|------|
+|conversationType|会话类型：1 单聊、3 群聊|Number| 是|
+|targetId| 目标 Id|String| 是|
+
+#### 消息体结构
+
+```
+截屏通知消息 ObjectName ：ST:ConNtf
+{
+    operatorUserId: encodedUserId,
+    operation: 'sendScreenNtf', 
+}
+```
+
+#### 返回结果
+
+正常返回，返回的 HTTP Status Code 为 200，返回的内容如下：
+
+```
+{	
+	"code": 200
+}
+
+```

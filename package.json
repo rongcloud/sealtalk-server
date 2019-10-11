@@ -36,7 +36,6 @@
     "qiniu": "^6.1.8",
     "rongcloud-sdk": "git+https://github.com/YongHao0/rongcloud-sdk.git",
     "semver": "^5.1.0",
-    "sequelize": "^3.8.0",
     "underscore": "^1.8.3",
     "xss": "^0.2.13"
   },

@@ -19,6 +19,13 @@
 | [/group/set_display_name](#post-groupset_display_name) | 设置群名片 |
 | [/group/:id](#get-groupid) | 获取群信息 |
 | [/group/:id/members](#get-groupidmembers) | 获取群成员 |
+| [/group/set_certification](#post-groupset_certification) | 设置群认证 |
+| [/group/agree](#post-groupagree) | 同意加群请求 |
+| [/group/notice_info](#get-groupnotice_info) | 群通知邀请信息 |
+| [/group/clear_notice](#post-groupclear_notice) | 群通知邀请信息 |
+| [/group/mute_all](#post-groupmute_all) | 全员禁言 |
+| [/group/set_regular_clear](#post-groupset-regular-clear) | 开启/更新 清理群离线消息 |
+| [/group/get_regular_clear](#post-groupgetregularclear) | 获取群定时清理状态 |
 
 
 ## API 说明
@@ -31,8 +38,9 @@
 
 ```
 {
-     "name": "RongCloud",
-     "memberIds": ["AUj8X32w1", "ODbpJIgrL"]
+	"name": "RongCloud",
+	"memberIds": ["AUj8X32w1", "ODbpJIgrL"],
+	"portraitUri":"http://rongcloud-file.r"
 }
 ```
 
@@ -47,7 +55,13 @@
 {
 	"code":200,
 	"result": {
-		"id": "RfqHbcjes"
+		"id": "RfqHbcjes",
+		"userStatus": [
+			{
+				"id": "uOavJZUpX",
+				"status": 3 // 1 为已加入, 2 为等待管理员同意, 3 为等待被邀请者同意
+			}
+		]
 	}
 }
 ```
@@ -82,7 +96,13 @@
 
 ```
 {
-	"code": 200
+	"code": 200,
+	"result": [
+		{
+			"id": "uOavJZUpX",
+			"status": 3  // 1 为已加入, 2 为等待管理员同意, 3 为等待被邀请者同意
+		}
+	]
 }
 ```
 
@@ -90,6 +110,26 @@
 
 * 200: 请求成功
 * 400: 错误的请求
+
+#### 消息说明
+
+`注:` server 发送的为 fromUserId 为 '__group_apply__' 的单聊消息
+
+ST:GrpApply
+
+```
+{
+	data: {
+		operatorNickname: '操作者昵称',
+		targetGroupId: '群组 id',
+		targetGroupName: '群组名',
+		status: 2, // 0: 忽略、1: 同意、2: 等待
+		type: 1 // 1: 待被邀请者处理、2: 待管理员处理
+	},
+	operatoerUserId: '操作者 id',
+	operation: 'Invite'
+}
+```
 
 ### POST /group/join
 
@@ -604,7 +644,10 @@ ST:GrpNtf
 		"type": 1,
 		"bulletin": "群公告",
 		"bulletinTime": 1560931403360,
-		"deletedAt": null
+		"deletedAt": null,
+		"isMute": 1, // 0 关闭全员禁言、 1 开启全员禁言
+		"certiStatus": 0 // 0 关闭群认证、 1 开启群认证
+		"memberProtection":0 // 0 关闭群成员保护模式、 1开启群成员保护模式
 	}
 }
 ```
@@ -655,9 +698,12 @@ ST:GrpNtf
 		"updatedAt": "2016-11-22T03:06:13.000Z",
 		"updatedTime": 1560222249000,
 		"user": {
-		"id": "xNlpDTUmw",
-		"nickname": "zl01",
-		"portraitUri": ""
+			"id": "xNlpDTUmw",
+			"nickname": "zl01",
+			"portraitUri": "",
+			"gender": "male", // 性别
+			"stAccount": "b323422", // SealTalk 号
+			"phone": "18701029999" // 手机号
 		}
 	},{
 		"displayName": "",
@@ -667,9 +713,13 @@ ST:GrpNtf
 		"updatedAt": "2016-11-22T03:14:09.000Z",
 		"updatedTime": 1560222249000,
 		"user": {
-		"id": "h6nEgcPC7",
-		"nickname": "zl02",
-		"portraitUri": ""
+			"id": "h6nEgcPC7",
+			"nickname": "zl02",
+			"portraitUri": ",
+			"gender": "male", // 性别
+			"stAccount": "b323422", // SealTalk 号
+			"phone": "18701029999" // 手机号
+		}
 	}]
 }
 ```
@@ -686,3 +736,201 @@ ST:GrpNtf
 
 * 200: 请求成功
 * 404: 未知群组
+
+### POST /group/set_certification
+
+设置群认证
+
+#### 请求参数
+
+|参数|说明|数据类型|是否必填|
+|---|----|------|------|
+|groupId|群 Id|String| 是|
+|certiStatus|认证状态： 0 开启(需要认证)、1 关闭（不需要认证）|Number|是|
+
+#### 返回结果
+
+正常返回，返回的 HTTP Status Code 为 200，返回的内容如下：
+
+```
+{
+	"code":200,
+}
+```
+
+返回码说明：
+
+* 200: 请求成功
+* 400: 错误的请求
+
+### POST /group/agree
+
+同意群邀请
+
+#### 请求参数
+
+|参数|说明|数据类型|是否必填|
+|---|----|------|------|
+|groupId|群 Id|String| 是|
+|receiverId|被邀请者 Id|String| 是|
+|status|是否同意 0 忽略、 1 同意|String| 是|
+
+#### 返回结果
+
+正常返回，返回的 HTTP Status Code 为 200，返回的内容如下：
+
+```
+{
+	"code":200,
+}
+```
+
+
+### GET /group/notice_info
+
+群通知邀请信息
+
+#### 请求参数
+
+```
+无
+```
+#### 返回结果
+
+正常返回，返回的 HTTP Status Code 为 200，返回的内容如下：
+
+```
+{	
+	"code": 200,
+	"result": [
+      {
+        "id": "z2mlAvb0c",
+        "status": 0, // 0: 忽略、1: 同意、2: 等待
+        "type": 1 // 1: 待被邀请者处理、2: 待管理员处理
+        "createdAt": "2019-07-18T05:37:12.000Z",
+		"createdTime": "1563428232000",
+        "requester": { // 邀请者信息
+            "id": "z2mlAvb0c",
+            "nickname": "群成员"
+        },
+        "receiver": { // 被邀请者信息
+            "id": "uOavJZUpX",
+            "nickname": "被邀请人"
+        },
+        "group": { // 群组信息
+            "id": "kFpN4KiZn",
+            "name": "测试群申请"
+        }
+      }
+  ]
+}
+
+```
+
+### POST /group/clear_notice
+
+清空群验证通知消息
+
+#### 请求参数
+
+无
+
+#### 返回结果
+
+正常返回，返回的 HTTP Status Code 为 200，返回的内容如下：
+
+```
+{	
+	"code": 200,
+}
+
+```
+
+
+### POST /group/mute_all
+
+全员禁言
+
+#### 请求参数
+
+|参数|说明|数据类型|是否必填|
+|---|----|------|------|
+|groupId|群 Id|String| 是|
+|muteStatus|禁言状态：0 关闭 1 开启|Number|是|
+|userId|可发言用户|Array|否|
+
+userId 不传全员禁言，仅群组和管理员可发言
+
+```
+{
+	"groupId":"1232s",
+	"muteStatus": 1,
+	"userId": "" //不设置传空	
+}
+```
+
+#### 返回结果
+
+正常返回，返回的 HTTP Status Code 为 200，返回的内容如下：
+
+```
+{	
+	"code": 200,
+}
+
+```
+
+
+
+### POST /group/set_regular_clear
+
+开启/更新 清理群离线消息
+
+#### 请求参数
+
+|参数|说明|数据类型|是否必填|
+|---|----|------|------|
+|groupId|群 Id|String| 是|
+|clearStatus|清理选项： 0 关闭、 3 清理 3 天前、 7 清理 7 天前、 36 清理 36 小时前 |Number|是|
+
+```
+{
+	"groupId":"1232s",
+	"clearStatus": 3 //清理 3 天前	
+}
+```
+
+#### 返回结果
+
+正常返回，返回的 HTTP Status Code 为 200，返回的内容如下：
+
+```
+{	
+	"code": 200,
+}
+
+```
+
+### POST /group/get_regular_clear
+
+获取群定时清理状态
+
+#### 请求参数
+
+|参数|说明|数据类型|是否必填|
+|---|----|------|------|
+|groupId|群 Id|String| 是|
+
+#### 返回结果
+
+正常返回，返回的 HTTP Status Code 为 200，返回的内容如下：
+
+```
+{	
+	"code": 200,
+	"result" {
+		"clearStatus":3 // 0 关闭、 3 清理 3 天前、 7 清理 7 天前、 36 清理 36 小时前
+	}
+}
+
+```

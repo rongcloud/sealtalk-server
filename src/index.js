@@ -47,7 +47,7 @@ app.use(bodyParser.json());
 authentication = function(req, res, next) {
   var body, currentUserId, i, len, ref, reqPath, userAgent;
   userAgent = req.get('user-agent').substr(0, 50);
-  ref = ['/misc/demo_square', '/misc/latest_update', '/user/verify_code_yp_t', '/misc/client_version', '/misc/mobile_version', '/user/login', '/user/register', '/user/reset_password', '/user/send_code', '/user/send_code_yp', '/user/verify_code', '/user/verify_code_yp', '/user/delete', '/user/get_sms_img_code', '/user/check_username_available', '/user/check_phone_available', '/user/regionlist'];
+  ref = ['/misc/demo_square', '/misc/latest_update', '/user/verify_code_yp_t', '/misc/client_version', '/misc/mobile_version', '/user/login', '/user/register', '/user/reset_password', '/user/send_code', '/user/send_code_yp', '/user/verify_code', '/user/verify_code_yp', '/user/delete', '/user/get_sms_img_code', '/user/check_username_available', '/user/check_phone_available', '/user/regionlist', '/ping'];
   for (i = 0, len = ref.length; i < len; i++) {
     reqPath = ref[i];
     if (req.path === reqPath) {
@@ -75,6 +75,7 @@ cacheControl = function(req, res, next) {
 
 parameterPreprocessor = function(req, res, next) {
   var prop;
+  // console.log(req.body,'index.js')
   for (prop in req.body) {
     if (prop.endsWith('Id') || prop.endsWith('Ids')) {
       req.body['encoded' + prop[0].toUpperCase() + prop.substr(1)] = req.body[prop];
@@ -108,6 +109,13 @@ app.use('/friendship', friendshipRouter);
 app.use('/group', groupRouter);
 
 app.use('/misc', miscRouter);
+
+app.use('/ping', function(req, res, next) {
+  return res.status(200).send({
+    code: 200
+  });
+})
+
 
 app.use(errorHandler);
 

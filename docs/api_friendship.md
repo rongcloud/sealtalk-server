@@ -9,7 +9,7 @@
 | [/friendship/set_display_name](#post-friendshipset_display_name) | 设置好友备注名 |
 | [/friendship/all](#get-friendshipall) | 获取好友列表 |
 | [/friendship/:friendId/profile](#get-friendshipfriendidprofile) | 获取好友信息 |
-
+| [/friendship/get_contacts_info](#post-friendshipgetcontactsinfo) | 获取通讯录朋友信息列表 |
 ## API 说明
 
 ### POST /friendship/invite
@@ -40,7 +40,7 @@
 }
 ```
 
-* action: 添加好友请求状态 `Added: 已添加` `None: 在对方黑名单中` `Sent: 请求已发送` 
+* action: 添加好友请求状态 `Added: 已添加` `None: 在对方黑名单中` `Sent: 请求已发送` `AddDirectly: 直接添加对方`
 
 返回码说明：
 
@@ -93,7 +93,7 @@
 }
 ```
 
-* friendId: 好友 Id
+* friendId:  好友 Id
 
 #### 返回结果
 
@@ -198,7 +198,10 @@
 			"nickname": "一杯水",
 			"region": "86",
 			"phone": "13269772766",
-			"portraitUri": "http://7xogjk.com1.z0.glb.clouddn.com/Fo6wxS7zzvGpwyAFhlpTUVirpOGh"
+			"portraitUri": "http://7xogjk.com1.z0.glb.clouddn.com/Fo6wxS7zzvGpwyAFhlpTUVirpOGh",
+			"gender": "male", // 性别
+			"stAccount": "b323422", // SealTalk 号
+			"phone": "18701029999" // 手机号
 		}
 	}]
 }
@@ -261,3 +264,53 @@ friendId: 好友 Id
 
 * 200: 请求成功
 * 403: friendId 非当前用户好友
+
+### POST /friendship/get_contacts_info
+
+获取通讯录朋友信息列表 （手机端传入手机列表，server 返回列表信息）
+
+参数|说明|数据类型|是否必填
+|---|----|------|------|
+|contacstList|手机号列表|Array| 是|
+
+```
+{
+	contactList: ['13099990000','13912349090']
+}
+```
+#### 返回结果
+
+正常返回，返回的 HTTP Status Code 为 200，返回的内容如下：
+
+```
+{	
+	"code": 200,
+	"result": [{
+		"registered": 1, // 0 未注册 1 已注册
+		"relationship": 0, // 0 非好友 1 好友
+		"stAccount": "ST64532", // sealtalk 号
+		"phone": "18700002234",
+		"id", "se2fd23", // 次用户 id
+		"nickname": "Tom", // 昵称
+		"portraitUri": "http://test.com/user/abc123.jpg" // 头像
+	},{
+		"registered": 0,
+		"relationship": "", // 0 非好友 1 好友
+		"stAccount": "",
+		"phone": "18700002234",
+		"id", "",
+		"nickname": "",
+		"portraitUri": ""
+	},{
+		"registered": 1,
+		"relationship": 1, // 0 非好友 1 好友
+		"stAccount": "",
+		"phone": "18700002234",
+		"id", "se2fd23",
+		"nickname": "Tom",
+		"portraitUri": "http://test.com/user/abc123.jpg"
+	}]
+}
+
+```
+

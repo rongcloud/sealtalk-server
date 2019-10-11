@@ -8,9 +8,9 @@ var Utility = require('./util').Utility;
 
 var DEMO_TYPE = 1; // SealTalk
 
-var ADMIN_REPORT_URL = 'report url',
-  DEBUG_ADMIN_DEPORT_URL = 'test report url',
-  ADMIN_REPORT_PATH = 'report path';
+var ADMIN_REPORT_URL = 'admin.rongcloud.cn',
+  DEBUG_ADMIN_DEPORT_URL = 'admin.rongcloud.net',
+  ADMIN_REPORT_PATH = '/demoApi/sendData';
 
 var request = (options) => {
   return new Promise((resolve, reject) => {
