@@ -1164,7 +1164,6 @@ GroupReceiver = sequelize.define('group_receiver', {
   },
   groupId: {
     type: Sequelize.INTEGER.UNSIGNED,
-    allowNull: false
   },
   groupName: {
     type: Sequelize.STRING(32),
@@ -1178,11 +1177,9 @@ GroupReceiver = sequelize.define('group_receiver', {
   },
   requesterId: {
     type: Sequelize.INTEGER.UNSIGNED,
-    allowNull: false
   },
   receiverId: {
     type: Sequelize.INTEGER.UNSIGNED,
-    allowNull: false
   },
   type: {
     type: Sequelize.INTEGER.UNSIGNED,
