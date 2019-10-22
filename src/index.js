@@ -81,7 +81,7 @@ parameterPreprocessor = function(req, res, next) {
       req.body['encoded' + prop[0].toUpperCase() + prop.substr(1)] = req.body[prop];
       req.body[prop] = Utility.decodeIds(req.body[prop]);
     }
-    if (Utility.isEmpty(req.body[prop]) && prop !== 'displayName' && prop !== 'pushContent' && prop !== 'bulletin') {
+    if (Utility.isEmpty(req.body[prop]) && prop !== 'displayName' && prop !== 'pushContent' && prop !== 'bulletin' && prop !== 'region' && prop !== 'phone' && prop !== 'groupNickname' && prop !== 'WeChat' && prop !== 'Alipay' && prop !== 'memberDesc' && prop !== 'description' && prop !== 'imageUri' ) {
       return res.status(400).send("Empty " + prop + ".");
     }
   }

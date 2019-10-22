@@ -25,11 +25,13 @@
 | [/user/sync/:version](#post-usersyncversion) | 同步用户的好友、黑名单、群组、群组成员数据 |
 | [/user/find/:region/:phone](#post-userfindregionphone) | 根据手机号查找用户信息 |
 | [/user/:id](#post-userid) | 获取用户信息 |
-| [/user/favgroups](#get-userfavgroups) | 获取用户信息 |
+| [/user/favgroups](#get-userfavgroups) | 获取通讯录群组 |
 | [/user/set_st_account](#post-userset_st_account) | 设置 SealTalk 号 |
 | [/user/set_gender](#post-userset_gender) | 设置性别 |
 | [/user/set_privacy](#post-userset_privacy) | 个人隐私设置 |
 | [/user/get_privacy](#get-userget_privacy) | 获取个人隐私设置 |
+| [/user/set_poke](#post-usersetpoke) | 设置接收戳一下消息状态 |
+| [/user/get_poke](#get-usergetpoke) | 获取接收戳一下消息状态 |
 
 ## API 说明
 
@@ -1076,6 +1078,7 @@
                 "creatorId": "kFpN4KiZn",
                 "memberCount": 2,
                 "maxMemberCount": 500,
+                "memberProtection": 0,
                 "createdAt": "2019-06-17T10:06:26.000Z",
                 "updatedAt": "2019-06-17T10:06:26.000Z",
                 "updatedTime": 1560765986000,
@@ -1103,7 +1106,7 @@
 
 设置 SealTalk 号
 
-参数|说明|数据类型|是否必填|
+|参数|说明|数据类型|是否必填|
 |---|----|------|------|
 |stAccount|sealtalk 号|String| 是|
 
@@ -1122,7 +1125,7 @@
 
 设置性别
 
-参数|说明|数据类型|是否必填|
+|参数|说明|数据类型|是否必填|
 |---|----|------|------|
 |gender|性别：男性 male 女性 female|String| 是|
 
@@ -1141,7 +1144,7 @@
 
 个人隐私设置
 
-参数|说明|数据类型|是否必填|
+|参数|说明|数据类型|是否必填|
 |---|----|------|------|
 |phoneVerify|允许 通过手机号搜索到我： 0 不允许 1允许 |Number| 否|
 |stSearchVerify|允许 SealTalk 号搜索到我： 0 不允许 1允许 |Number| 否|
@@ -1178,3 +1181,39 @@
 
 ```
 
+<<<<<<< HEAD
+=======
+### POST /user/set_poke
+
+设置接收戳一下消息状态
+
+|参数|说明|数据类型|是否必填|
+|---|----|------|------|
+|pokeStatus|接收戳一下消息状态： 0 不允许 1允许 |Number| 否|
+
+#### 返回结果
+
+正常返回，返回的 HTTP Status Code 为 200，返回的内容如下：
+
+```
+{	
+	"code": 200,
+}
+
+```
+## GET /user/get_poke
+
+获取接收戳一下消息状态
+
+#### 返回结果
+
+正常返回，返回的 HTTP Status Code 为 200，返回的内容如下：
+
+```
+{	
+	"pokeStatus": 0, //  0 不允许 1允许
+}
+
+```
+
+>>>>>>> c-mobile-refactor-2.2.0

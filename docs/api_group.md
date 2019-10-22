@@ -26,6 +26,11 @@
 | [/group/mute_all](#post-groupmute_all) | 全员禁言 |
 | [/group/set_regular_clear](#post-groupset-regular-clear) | 开启/更新 清理群离线消息 |
 | [/group/get_regular_clear](#post-groupgetregularclear) | 获取群定时清理状态 |
+| [/group/set_member_info](#post-groupsetmemberinfo) | 设置群成员信息 |
+| [/group/get_member_info](#post-groupgetmemberinfo) | 获取群成员信息 |
+| [/group/copy_group](#post-groupcopygroup) | 复制群 |
+| [/group/exited_list](#post-groupexitedlist) | 退群列表 |
+| [/group/set_member_protection](#post-groupsetmemberprotection) | 群成员保护模式设置 |
 
 
 ## API 说明
@@ -691,7 +696,7 @@ ST:GrpNtf
 "code": 200,
 "result": [
 	{
-		"displayName": "",
+		"groupNickname": "", //群成员昵称
 		"role": 1,  // 1 为成员, 0 为群主, 2 为管理员
 		"createdAt": "2016-11-22T03:06:13.000Z",
 		"createdTime": 1560222249000,
@@ -699,14 +704,14 @@ ST:GrpNtf
 		"updatedTime": 1560222249000,
 		"user": {
 			"id": "xNlpDTUmw",
-			"nickname": "zl01",
+			"nickname": "zl01", //用户昵称
 			"portraitUri": "",
 			"gender": "male", // 性别
 			"stAccount": "b323422", // SealTalk 号
 			"phone": "18701029999" // 手机号
 		}
 	},{
-		"displayName": "",
+		"groupNickname": "", //群成员昵称
 		"role": 1,
 		"createdAt": "2016-11-22T03:14:09.000Z",
 		"createdTime": 1560222249000,
@@ -735,6 +740,7 @@ ST:GrpNtf
 返回码说明：
 
 * 200: 请求成功
+* 403: 用户不在群组中
 * 404: 未知群组
 
 ### POST /group/set_certification
@@ -934,3 +940,189 @@ userId 不传全员禁言，仅群组和管理员可发言
 }
 
 ```
+
+### POST /group/set_member_info
+
+设置群成员信息
+
+#### 请求参数
+
+|参数|说明|数据类型|是否必填|
+|---|----|------|------|
+|groupId|群 Id|String| 是|
+|memberId|群用户 Id |String|是|
+|groupNickname| 群成员昵称 |String|否|
+|region|区号|String|否|
+|phone|电话 |String|否|
+|WeChat|微信号 |String|否|
+|Alipay|支付宝号 |String|否|
+|memberDesc|描述|Array|否|
+
+设置哪个传哪个，不传为不设置
+
+```
+{
+	"groupNickname": "lee",
+	"region": "86",
+	"phone": "19990001233",
+	"WeChat": "yt001",
+	"Alipay":  "yt002",
+	"memberDesc": "['描述1','描述2','描述3']"
+}
+```
+
+#### 返回结果
+
+正常返回，返回的 HTTP Status Code 为 200，返回的内容如下：
+
+```
+{	
+	"code": 200,
+}
+
+```
+
+### POST /group/get_member_info
+
+获取群成员信息
+
+#### 请求参数
+
+|参数|说明|数据类型|是否必填|
+|---|----|------|------|
+|groupId|群 Id|String| 是|
+|memberId|群用户 Id |String|是|
+
+#### 返回结果
+
+正常返回，返回的 HTTP Status Code 为 200，返回的内容如下：
+
+```
+{	
+	"code": 200,
+	"result" {
+		"groupNickname": 'lee',
+		"phone": '19990001233',
+		"WeChat":"yt001",
+		"Alipay": "yt002",
+		"memberDesc": "['描述1','描述2','描述3']"
+	}
+}
+
+```
+
+### POST /group/copy_group
+
+复制群组
+
+#### 请求参数
+
+|参数|说明|数据类型|是否必填|
+|---|----|------|------|
+|groupId|群 Id|String| 是|
+|name|群名称|String| 是|
+|portraitUri|群头像 |String|是|
+
+```
+{
+	"groupId": "dljpFS2",
+	"name": "RongCloud",
+	"portraitUri":"http://rongcloud-file.r"
+}
+```
+
+#### 返回结果
+
+正常返回，返回的 HTTP Status Code 为 200，返回的内容如下：
+
+```
+{
+	"code":200,
+	"result": {
+		"id": "RfqHbcjes",// 群 Id
+		"userStatus": [
+			{
+				"id": "uOavJZUpX",
+				"status": 3 // 1 为已加入, 2 为等待管理员同意, 3 为等待被邀请者同意
+			}
+		]
+	}
+}
+```
+
+返回码说明：
+
+* 200: 请求成功
+* 400: 错误的请求
+* 20004: 群处于保护期
+* 20005: 7 天内已被复制一次
+* 20006: 群不存在或被解散
+
+
+### POST /group/exited_list
+
+退群列表
+
+#### 请求参数
+
+|参数|说明|数据类型|是否必填|
+|---|----|------|------|
+|groupId|群Id|String| 是|
+
+#### 返回结果
+
+正常返回，返回的 HTTP Status Code 为 200，返回的内容如下：
+
+```
+{
+	"code":200,
+	"result": [{
+		"quitUserId": "djwe23", // 退群用户 Id
+		"quitNickname": "珊珊", //退群用户昵称
+		"quitPortraitUri": "http://rongcloud-file.r", //退群用户头像
+		"quitReason": 0, // 0 被群主 张 移除群聊、 1 被管理员 张 移除、 2 主动退出
+		"quitTime": '1562645863366' //退出时间
+		"operatorId": "djw3sd", //操作者 Id
+		"operatorName": '张', //管理员或群组名字
+	},{
+		"quitUserId": "djwe23", // 退群用户 Id
+		"quitNickname": "珊珊", //退群用户昵称
+		"quitPortraitUri": "http://rongcloud-file.r", //退群用户头像
+		"quitReason": 0, // 0 被群主 张 移除群聊、 1 被管理员 张 移除、 2 主动退出
+		"quitTime": '1562645863366' //退出时间
+		"operatorId": "", //操作者 Id
+		"operatorName": '', //管理员或群组名字
+	}]
+}
+```
+
+返回码说明：
+
+* 200: 请求成功
+* 400: 错误的请求
+
+### POST /group/set_member_protection
+
+设置群成员保护模式
+
+#### 请求参数
+
+|参数|说明|数据类型|是否必填|
+|---|----|------|------|
+|groupId|群Id|String| 是|
+|memberProtection|成员保护模式: 0 关闭、1 开启|Number|是|
+
+#### 返回结果
+
+正常返回，返回的 HTTP Status Code 为 200，返回的内容如下：
+
+```
+{
+	"code":200,
+}
+```
+
+返回码说明：
+
+* 200: 请求成功
+* 400: 错误的请求

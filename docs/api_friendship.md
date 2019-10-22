@@ -10,6 +10,9 @@
 | [/friendship/all](#get-friendshipall) | 获取好友列表 |
 | [/friendship/:friendId/profile](#get-friendshipfriendidprofile) | 获取好友信息 |
 | [/friendship/get_contacts_info](#post-friendshipgetcontactsinfo) | 获取通讯录朋友信息列表 |
+|[/friendship/batch_delete](#post-friendshipbatchdelete)|批量删除好友|
+|[/friendship/set_friend_description](#post-friendshipsetfrienddescription)|设置朋友备注和描述|
+|[/friendship/get_friend_description](#post-friendshipgetfrienddescription)|获取朋友备注和描述|
 ## API 说明
 
 ### POST /friendship/invite
@@ -269,7 +272,7 @@ friendId: 好友 Id
 
 获取通讯录朋友信息列表 （手机端传入手机列表，server 返回列表信息）
 
-参数|说明|数据类型|是否必填
+|参数|说明|数据类型|是否必填|
 |---|----|------|------|
 |contacstList|手机号列表|Array| 是|
 
@@ -313,4 +316,88 @@ friendId: 好友 Id
 }
 
 ```
+
+### POST /friendship/batch_delete
+
+批量删除好友
+
+#### 请求参数
+
+|参数|说明|数据类型|是否必填|
+|---|----|------|------|
+|friendIds|好友 Id|Array| 是|
+
+```
+{
+    "friendIds": ["RfqHbcjes","RfqHbcjes"]
+}
+```
+
+
+#### 返回结果
+
+正常返回，返回的 HTTP Status Code 为 200，返回的内容如下：
+
+```
+{	
+	"code": 200
+}
+```
+
+返回码说明：
+
+* 200: 请求成功
+
+### POST /friendship/set_friend_description
+
+设置朋友备注和描述
+
+#### 请求参数
+
+|参数|说明|数据类型|是否必填|
+|---|----|------|------|
+|friendId|朋友 id |String| 是|
+|displayName|备注 |String | 否|
+|region|国家区号|String|否|
+|phone|手机号 |String| 否|
+|description|更多描述 |String | 否|
+|imageUri|照片地址 |String| 否|
+
+设置哪项传哪项，不传为不设置,设置为空,传空字符串
+
+#### 返回结果
+
+正常返回，返回的 HTTP Status Code 为 200，返回的内容如下：
+
+```
+{	
+	"code": 200,
+}
+
+```
+## POST /friendship/get_friend_description
+
+获取朋友备注和描述
+
+#### 请求参数
+
+|参数|说明|数据类型|是否必填|
+|---|----|------|------|
+|friendId|朋友 id |String| 是|
+
+#### 返回结果
+
+正常返回，返回的 HTTP Status Code 为 200，返回的内容如下：
+
+```
+{	
+	"displayName": 'Fox', 
+	"region": '86', 
+	"phone": '18700991234', 
+	"description": '融云该公司地址在北京市朝阳区北苑路北。', 
+	"imageUri": 'http://rongcloud-file.ronghub.com/cb6d05474f891251ae.PNG', 
+}
+
+```
+
 

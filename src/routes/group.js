@@ -26,11 +26,14 @@ var addUpdateTimeToList = require('../util/util').addUpdateTimeToList,
   addUpdateTime = require('../util/util').addUpdateTime;
 
 var GroupReceiver = ref[13];
+var GroupExitedList = ref[15];
 
 var ENUM = require('../util/enum');
 var GroupRole = ENUM.GroupRole;
 var ErrorENUM = ENUM.Error;
 var GroupReceiverStatus = ENUM.GroupReceiverStatus;
+var CopyGroupError = ENUM.CopyGroupError;
+var GroupExitedStatus = ENUM.GroupExitedStatus;
 var GROUP_CREATOR = GroupRole.CREATOR,
   GROUP_MEMBER = GroupRole.MEMBER,
   GROUP_MANAGER = GroupRole.MANAGER;
@@ -225,6 +228,7 @@ router.post('/create', function(req, res, next) {
   Utility.log('encodedMemberIds', encodedMemberIds);
   currentUserId = Session.getCurrentUserId(req);
 
+  
   var userStatus = [];
 
   var joinUserIds = memberIds.filter(function (memberId) {
@@ -241,12 +245,11 @@ router.post('/create', function(req, res, next) {
     return res.status(400).send("Group's member count is out of max group member count limit (" + DEFAULT_MAX_GROUP_MEMBER_COUNT + ").");
   }
   timestamp = Date.now();
-
   return GroupMember.getGroupCount(currentUserId).then(function (count) {
     if (count === MAX_USER_GROUP_OWN_COUNT) {
       return res.send(new APIResult(1000, null, "Current user's group count is out of max user group count limit (" + MAX_USER_GROUP_OWN_COUNT + ")."));
     }
-
+    
     var verifyOpenedUserIdList = [];
     var verifyClosedUserIdList = [];
     var group;
@@ -254,13 +257,15 @@ router.post('/create', function(req, res, next) {
       verifyOpenedUserIdList = result.opened;
       verifyClosedUserIdList = result.closed;
       joinUserIds = verifyClosedUserIdList.concat([currentUserId]);
+      
+      console.log(name,'---',portraitUri,'---',joinUserIds.length,currentUserId,timestamp)
       return Group.create({
         name: name,
         portraitUri: portraitUri,
         memberCount: joinUserIds.length,
         creatorId: currentUserId,
         timestamp: timestamp
-      });
+      })
     }).then(function (groupDetail) {
       group = groupDetail;
       return sequelize.transaction(function (t) {
@@ -272,6 +277,7 @@ router.post('/create', function(req, res, next) {
           return group;
         });
       });
+      
     }).then(function () {
       return DataVersion.updateGroupMemberVersion(group.id, timestamp);
     }).then(function () {
@@ -313,10 +319,8 @@ router.post('/create', function(req, res, next) {
         id: group.id,
         userStatus: userStatus
       })));
-    });
+    })
   })["catch"](next);
-
-
 
   // /* ---------------- */
   // return GroupMember.getGroupCount(currentUserId).then(function(count) {
@@ -507,6 +511,124 @@ var addMembers = function (groupId, memberIds, optUserId) {
 //   })["catch"](next);
 // });
 
+var createExitedInfo = function(params) {
+  return new Promise(function(resolve, reject){
+    GroupExitedList.create({
+      groupId: params.groupId,
+      quitUserId: params.quitUserId,
+      quitNickname: params.quitNickname,
+      quitPortraitUri: params.quitPortraitUri,
+      quitReason: params.quitReason,
+      quitTime: params.quitTime,
+      operatorId: params.operatorId,
+      operatorName: params.operatorName
+    }).then(function () {
+      resolve();
+    }).catch(function (err) {
+      reject(err)
+    })
+  })
+  
+}
+var getUserInfos = function(id,callback){
+  return User.findOne({
+    where: {
+      id: id
+    },
+    attributes: ['nickname', 'portraitUri']
+  }).then(function(user) {
+    // console.log('user----',user.nickname);
+    user = {
+      nickname: user.nickname,
+      portraitUri: user.portraitUri
+    }
+    // console.log('user----',user);
+    callback(user);
+  })
+}
+
+var upsertGroupExitedList = function(params){
+  var currentUserId, groupId, quitUserId, operatorId, kickStatus, currentTime, quitNickname, quitPortraitUri, operatorName;
+  currentTime = new Date().getTime();
+  currentUserId = params.currentUserId;
+  groupId = params.groupId;
+  quitUserId = params.quitUserId;
+  operatorId = params.operatorId;
+  kickStatus = params.kickStatus;
+  return new Promise(function(resolve, reject){
+    if(kickStatus == 0){ //主动退出
+      //查昵称头像
+      return getUserInfos(currentUserId,function(user){
+        console.log('up user',user);
+        createExitedInfo({
+          groupId: groupId,
+          quitUserId: currentUserId,
+          quitNickname: user.nickname,
+          quitPortraitUri: user.portraitUri,
+          quitReason: GroupExitedStatus.SLEF,
+          quitTime: currentTime
+        }).then(function () {
+          resolve();
+        }).catch(function(err) {
+          console.log(err);
+          reject(err);
+        })
+      })
+    }
+    //管理员踢
+    return Group.findOne({
+      where: {
+        id: groupId
+      },
+      attributes: ['creatorId']
+    }).then(function(groupInfo) {
+      if(groupInfo.creatorId == operatorId) {//群主踢
+        quitReason = GroupExitedStatus.CREATOR
+      }else { //管理员踢
+        quitReason = GroupExitedStatus.MANAGER;
+      }
+      getUserInfos(quitUserId,function(quitUser) {
+        console.log('quitUser',quitUser, operatorId)
+        getUserInfos(operatorId,function(operatorUser) {
+          console.log('operatorUser',operatorUser)
+          quitNickname = quitUser.nickname;
+          quitPortraitUri = quitUser.portraitUri;
+          operatorName = operatorUser.nickname;
+          createExitedInfo({
+            groupId: groupId,
+            quitUserId: quitUserId,
+            quitNickname: quitNickname,
+            quitPortraitUri: quitPortraitUri,
+            quitReason: quitReason,
+            quitTime: currentTime,
+            operatorId: operatorId,
+            operatorName: operatorName
+          }).then(function () {
+            resolve();
+          })
+        })
+      })
+    })
+  })
+}
+
+var delGroupExitedListItem = function(groupId, quitUserIds) {
+  console.log(' deling--',groupId, quitUserIds)
+  return new Promise(function(resolve, reject) {
+    return GroupExitedList.destroy({
+      where: {
+        groupId: groupId,
+        quitUserId: {
+          $in: quitUserIds
+        }
+      }
+    }).then(function(err){
+      console.log(err);
+      resolve(err);
+    })
+  })
+} 
+
 router.post('/join', function(req, res, next) {
   var currentUserId, encodedGroupId, groupId, timestamp;
   groupId = req.body.groupId;
@@ -584,6 +706,7 @@ router.post('/kick', function(req, res, next) {
   encodedMemberIds = req.body.encodedMemberIds;
   currentUserId = Session.getCurrentUserId(req);
   timestamp = Date.now();
+  // console.log(memberIds) 
   if (_.contains(memberIds, currentUserId)) {
     return res.status(400).send('Can not kick yourself.');
   }
@@ -685,7 +808,17 @@ router.post('/kick', function(req, res, next) {
                   Cache.del("group_" + groupId);
                   Cache.del("group_members_" + groupId);
                   return GroupFav.deleteFac(groupId, memberIds).then(function () {
-                    return res.send(new APIResult(200));
+                    memberIds.forEach(function(memberId) {
+                      upsertGroupExitedList({
+                        groupId: groupId,
+                        quitUserId: memberId,
+                        operatorId: currentUserId,
+                        kickStatus: 1
+                      }).then(function() {
+                        return res.send(new APIResult(200));
+                      })
+                    })
+                    // return res.send(new APIResult(200));
                   });
                 })
               });
@@ -841,7 +974,13 @@ router.post('/quit', function(req, res, next) {
                 Cache.del("group_" + groupId);
                 Cache.del("group_members_" + groupId);
                 return GroupFav.deleteFac(groupId, [ currentUserId ]).then(function () {
-                  return res.send(new APIResult(200, null, resultMessage));
+                  upsertGroupExitedList({
+                    groupId: groupId,
+                    currentUserId: currentUserId,
+                    kickStatus: 0
+                  }).then(function() {
+                    return res.send(new APIResult(200, null, resultMessage));
+                  })
                 });
               });
             });
@@ -1455,7 +1594,7 @@ router.get('/:id', function(req, res, next) {
       return res.send(new APIResult(200, group));
     } else {
       return Group.findById(groupId, {
-        attributes: ['id', 'name', 'portraitUri', 'memberCount', 'maxMemberCount', 'creatorId', 'bulletin', 'deletedAt','isMute','certiStatus'],
+        attributes: ['id', 'name', 'portraitUri', 'memberCount', 'maxMemberCount', 'creatorId', 'bulletin', 'deletedAt','isMute','certiStatus','memberProtection'],
         paranoid: false
       }).then(function(group) {
         var results;
@@ -1493,7 +1632,7 @@ router.get('/:id/members', function(req, res, next) {
         where: {
           groupId: groupId
         },
-        attributes: ['displayName', 'role', 'timestamp', 'createdAt', 'updatedAt'],
+        attributes: ['displayName', 'role', 'timestamp', 'groupNickname', 'createdAt', 'updatedAt'],
         include: {
           model: User,
           attributes: ['id', 'nickname', 'portraitUri','gender','stAccount','phone']
@@ -1798,7 +1937,10 @@ router.post('/add', function (req, res, next) {
       return addMembers(groupId, verifyClosedUserIds, currentUserId);
     }
   }).then(function () {
-    return res.send(new APIResult(200, userStatus));
+    console.log('before del--')
+    return delGroupExitedListItem(groupId, verifyClosedUserIds).then(function(){
+      return res.send(new APIResult(200, userStatus));
+    })
   })['catch'](next);;
 });
 
@@ -1814,7 +1956,7 @@ router.post('/agree', function (req, res, next) {
   var type = isReceiverOpt ? GroupReceiverType.MEMBER : GroupReceiverType.MANAGER;
   var groupReceiver;
 
-  console.log(groupId, receiverId, type, currentUserId);
+  // console.log(groupId, receiverId, type, currentUserId);
   return GroupReceiver.findOne({
     where: {
       groupId: groupId,
@@ -1858,6 +2000,11 @@ router.post('/agree', function (req, res, next) {
       return addMembers(groupId, [receiverId], groupReceiver.requesterId);
     }
   }).then(function () {
+    if(isAgree){
+      return delGroupExitedListItem(groupId, [receiverId]).then(function(){
+        return res.send(new APIResult(200));
+      })
+    }
     return res.send(new APIResult(200));
   })['catch'](next);
 });
@@ -1989,15 +2136,18 @@ router.post('/mute_all', function (req, res, next) {
   }
 });
 
-var sendGroupNtfMsg = function(userId,targetId,operation) {
+var sendGroupNtfMsg = function(userId,targetId,operation,objectName,clearTime) {
+  // console.log('msg:',userId,targetId,operation,objectName,clearTime)
   var encodedUserId, message, objectName;
-  objectName = 'ST:ConNtf';
   encodedUserId = Utility.encodeId(userId);
   encodedTargetId = Utility.encodeId(targetId);
   message = {
     operatorUserId: encodedUserId,
-    operation: operation,
+    operation: operation
   };
+  if(clearTime){
+    message.clearTime = clearTime
+  }
   return new Promise(function(resolve, reject) {
     rongCloud.message.group.publishCus({
       fromUserId: encodedUserId,
@@ -2015,41 +2165,7 @@ var sendGroupNtfMsg = function(userId,targetId,operation) {
     })
   })
 }
-var findClearGroup = function(clearStatus) {
-  return new Promise(function(resolve, reject) {
-    return Group.findAll({
-      where: {
-        clearStatus: clearStatus
-      },
-      attributes: [id]
-    }).then(function(gro) {
-      // console.log(gro)
-      resolve(gro);
-    })
-  })
-}
-/**
- * params.currentUserId: 当前用户 Id
- * params.targetId: 目标用户 Id
- * params.conversationType: 会话类型
- * params.clearType: 清除类型 3 3天前、7 7天前、36 36小时前
- */
-var regularClearMsg = function(params) {
-  Group.findAll({
-    where: {
-        clearStatus: {
-          $in:[3, 7, 36]
-        }
-    },
-    attributes: ['id', 'clearStatus', 'clearTimeAt']
-  }).then(function (groups) {
-      console.log(typeof groups);
-      for(var key in groups){
-        console.log(groups[key].id,groups[key].clearStatus,groups[key].clearTimeAt)
-      }
-  })
-  
-}
+
 //定时清理群消息
 router.post('/set_regular_clear', function (req, res, next) {
   var currentUserId = Session.getCurrentUserId(req),
@@ -2082,9 +2198,10 @@ router.post('/set_regular_clear', function (req, res, next) {
         id: groupId
       }
     }).then(function() {
-      return sendGroupNtfMsg(currentUserId, groupId, operation).then(function (result) {
-        // regularClearMsg();
+      return sendGroupNtfMsg(currentUserId, groupId, operation, 'ST:ConNtf').then(function (result) {
         return res.send(new APIResult(200));
+      }).catch(function(err) {
+        return res.send(new APIResult(500, err));
       })
     })
   })['catch'](next)
@@ -2099,7 +2216,452 @@ router.post('/get_regular_clear', function (req, res, next) {
     },
     attributes: ['clearStatus']
   }).then(function (result){
-    return res.send(new APIResult(200,result.clearStatus));
+    return res.send(new APIResult(200,result));
   })['catch'](next)
+})
+
+//设置群成员保护状态
+router.post('/set_member_protection', function (req, res, next) {
+  var currentUserId = Session.getCurrentUserId(req),
+    memberProtection = req.body.memberProtection,
+    groupId = req.body.groupId;
+  var operation = 'openMemberProtection';
+  if(memberProtection == 0) {
+    operation = 'closeMemberProtection';
+  }
+  return Group.update({
+    memberProtection: memberProtection
+  },{
+    where: {
+      id: groupId
+    }
+  }).then(function(){
+    Cache.del("group_" + groupId);
+    return sendGroupNtfMsg(currentUserId, groupId, operation, 'ST:GrpNtf').then(function (result) {
+      return res.send(new APIResult(200));
+    })
+  })['catch'](next)
+})
+
+//设置群成员信息
+router.post('/set_member_info', function (req, res, next) {
+  var currentUserId = Session.getCurrentUserId(req),
+    groupId = req.body.groupId,
+    memberId = req.body.memberId,
+    groupNickname = req.body.groupNickname,
+    region = req.body.region,
+    phone = req.body.phone,
+    WeChat = req.body.WeChat,
+    Alipay = req.body.Alipay,
+    memberDesc = req.body.memberDesc;
+    console.log(req.body)
+  return GroupMember.findOne({
+    where: {
+      groupId: groupId,
+      memberId: memberId
+    },
+    attributes: ['isDeleted', 'groupNickname', 'region', 'phone', 'WeChat', 'Alipay', 'memberDesc']
+  }).then(function(member) {
+    if(!member || member.idDeleted === 1) {
+      return res.status(400).send('Not a group member .');
+    }
+    console.log(typeof memberDesc,req.body, groupNickname == undefined ? member.groupNickname : groupNickname)
+    return GroupMember.update({
+      groupNickname: groupNickname == undefined ? member.groupNickname : groupNickname,
+      displayName: groupNickname == undefined ? member.groupNickname : groupNickname,
+      region: region == undefined ? member.region : region,
+      phone: phone == undefined ? member.phone : phone,
+      WeChat: WeChat == undefined ? member.WeChat : WeChat,
+      Alipay: Alipay == undefined ? member.Alipay : Alipay,
+      memberDesc: memberDesc == undefined ? member.memberDesc : JSON.stringify(memberDesc),
+      // memberDesc: memberDesc == undefined ? member.memberDesc : memberDesc,
+    }, {
+      where: {
+        groupId: groupId,
+        memberId: memberId
+      }
+    }).then(function (mem) {
+      Cache.del("group_" + groupId);
+      Cache.del("group_members_" + groupId);
+      return res.send(new APIResult(200));
+    })
+  })
+
+})
+//获取群成员信息
+router.post('/get_member_info', function (req, res, next) {
+  var groupId = req.body.groupId,
+    memberId = req.body.memberId;
+    return GroupMember.findOne({
+      where: {
+        groupId: groupId,
+        memberId: memberId
+      },
+      attributes: ['isDeleted', 'groupNickname', 'region', 'phone', 'WeChat', 'Alipay', 'memberDesc']
+    }).then(function(member) {
+      if(!member || member.idDeleted === 1) {
+        return res.status(400).send('Not a group member .');
+      }
+      // console.log('member.memberDesc:', member.memberDesc.length)
+      if(member.memberDesc){
+        member.memberDesc = JSON.parse(member.memberDesc);
+      }
+      
+      return res.send(new APIResult(200, member));
+    })
+})
+
+//复制群
+router.post('/copy_group', function (req, res, next) {
+  var groupId = req.body.groupId,
+    name = Utility.xss(req.body.name, GROUP_NAME_MAX_LENGTH),
+    portraitUri = req.body.portraitUri,
+    currentUserId = Session.getCurrentUserId(req),
+    timestamp = Date.now();
+  console.log(`groupId:`,groupId)
+  return Group.findOne({
+    where: {
+      id: groupId
+    },
+    attributes: ['createdAt', 'copiedTime']
+  }).then(function( results) {
+    if(results == null){
+      return res.send(new APIResult(CopyGroupError.NOT_EXIST.code, CopyGroupError.NOT_EXIST.msg));
+    }
+    console.log('createdAt', results.createdAt)
+    var createTimestamp = results.createdAt.getTime();
+    var currentTimestamp = new Date().getTime();
+    var sevenDaysTimestamp = 86400000 * 7;
+    var oneHourTimestamp = 3600000; // 测试用
+    if(results.copiedTime == undefined){
+      results.copiedTime = 0;
+    }
+    var hasSevenDays = currentTimestamp - createTimestamp > oneHourTimestamp;// 测试用
+    var hasCopied = currentTimestamp - results.copiedTime > oneHourTimestamp;// 测试用
+    // var hasSevenDays = currentTimestamp - createTimestamp > sevenDaysTimestamp;
+    // var hasCopied = currentTimestamp - results.copiedTime > sevenDaysTimestamp;
+
+    // console.log(currentTimestamp,createTimestamp,currentTimestamp - createTimestamp)
+    // console.log(currentTimestamp,results.copiedTime,currentTimestamp - results.copiedTime)
+    // console.log(hasSevenDays, hasCopied)
+    if(!hasSevenDays){ //20004
+      return res.send(new APIResult(CopyGroupError.PROTECTED.code));
+    }
+    if(!hasCopied) { //20005
+      return res.send(new APIResult(CopyGroupError.COPIED.code));
+    }
+    return GroupMember.findAll({
+      where:{
+        groupId: groupId
+      },
+      attributes: ['memberId', 'role']
+    }).then(function (memberInfos) {
+      //创建群
+      var encodeGroupMemberIds = [];
+      var  encodedMemberIds = [], memberIds = [];
+      for(var key in memberInfos) {
+        console.log(memberInfos[key].memberId)
+        encodeGroupMemberIds.push(Utility.encodeId(memberInfos[key].memberId));
+        memberIds.push(memberInfos[key].memberId);
+      }
+      // create
+      encodedMemberIds = encodeGroupMemberIds;
+      Utility.log('memberIds', memberIds);
+      Utility.log('encodedMemberIds', encodedMemberIds);
+
+      var userStatus = [];
+
+      var joinUserIds = memberIds.filter(function (memberId) {
+        return memberId !== currentUserId
+      });
+
+      if (!validator.isLength(name, GROUP_NAME_MIN_LENGTH, GROUP_NAME_MAX_LENGTH)) {
+        return res.status(400).send('Length of group name is out of limit.');
+      }
+      if (memberIds.length === 1) {
+        // return res.status(400).send("Group's member count should be greater than 1 at least.");
+        return res.send(new APIResult(CopyGroupError.LIMIT.code));
+      }
+      if (memberIds.length > DEFAULT_MAX_GROUP_MEMBER_COUNT) {
+        return res.status(400).send("Group's member count is out of max group member count limit (" + DEFAULT_MAX_GROUP_MEMBER_COUNT + ").");
+      }
+
+      return GroupMember.getGroupCount(currentUserId).then(function (count) {
+        if (count === MAX_USER_GROUP_OWN_COUNT) {
+          return res.send(new APIResult(1000, null, "Current user's group count is out of max user group count limit (" + MAX_USER_GROUP_OWN_COUNT + ")."));
+        }
+
+        var verifyOpenedUserIdList = [];
+        var verifyClosedUserIdList = [];
+        var group;
+        return User.batchGroupVerify(joinUserIds).then(function (result) {
+          verifyOpenedUserIdList = result.opened;
+          verifyClosedUserIdList = result.closed;
+          joinUserIds = verifyClosedUserIdList.concat([currentUserId]);
+          return Group.create({
+            name: name,
+            portraitUri: portraitUri,
+            memberCount: joinUserIds.length,
+            creatorId: currentUserId,
+            timestamp: timestamp
+          });
+        }).then(function (groupDetail) {
+          group = groupDetail;
+          return sequelize.transaction(function (t) {
+            return co(function* () {
+              userStatus = userStatus.concat(joinUserIds.map(function (id) {
+                return { id: Utility.encodeId(id), status: ENUM.GroupAddStatus.ADDED };
+              }));
+              (yield GroupMember.bulkUpsert(group.id, joinUserIds, timestamp, t, currentUserId));
+              return group;
+            });
+          });
+        }).then(function () {
+          return DataVersion.updateGroupMemberVersion(group.id, timestamp);
+        }).then(function () {
+          var groupMemberIds = Utility.encodeIds(joinUserIds);
+          return createGroup(groupMemberIds, Utility.encodeId(group.id), name);
+        }).then(function (result) {
+          var success = result.code === 200;
+          if (success) {
+            return Session.getCurrentUserNickname(currentUserId, User).then(function (nickname) {
+              return sendGroupNotification(currentUserId, group.id, GROUP_OPERATION_CREATE, {
+                operatorNickname: nickname,
+                targetGroupName: name,
+                timestamp: timestamp
+              });
+            });
+          } else {
+            return GroupSync.upsert({
+              syncInfo: success,
+              syncMember: success
+            }, {
+              where: {
+                groupId: group.id
+              }
+            });
+          }
+        }).then(function () {
+          if (verifyOpenedUserIdList.length) {
+            userStatus = userStatus.concat(verifyOpenedUserIdList.map(function (id) {
+              return { id: Utility.encodeId(id), status: ENUM.GroupAddStatus.WAIT_MEMBER };
+            }));
+            return batchUpsertGroupReceiver(group, currentUserId, verifyOpenedUserIdList, verifyOpenedUserIdList, ENUM.GroupReceiverType.MEMBER, GroupReceiverStatus.WAIT);
+          }
+          return Promise.resolve();
+        }).then(function () {
+          memberIds.forEach(function (memberId) {
+            return Cache.del("user_groups_" + memberId);
+          });
+          //更新复制时间
+          console.log('timestamp',timestamp,groupId)
+          return Group.update({
+            copiedTime: timestamp
+          },{
+            where: {
+              id: groupId
+            }
+          }).then(function(gro){
+            console.log('gro',gro)
+            return res.send(new APIResult(200, Utility.encodeResults({
+              id: group.id,
+              userStatus: userStatus
+            })));
+          })
+        });
+      })
+    })
+  })["catch"](next);
+})
+
+//退群列表
+router.post('/exited_list', function (req, res, next) {
+  var currentUserId = Session.getCurrentUserId(req);;
+  var groupId = req.body.groupId;
+  console.log('---',req.body);
+  return GroupMember.findOne({
+    where: {
+      groupId: groupId,
+      memberId: currentUserId
+    },
+    attributes: ['role']
+  }).then(function(group) {
+    console.log(group)
+    if(group.role == GROUP_MEMBER){
+      return res.status(400).send('Current user is not group manager.');
+    }
+    return GroupExitedList.findAll({
+      where: {
+        groupId: groupId
+      },
+      attributes: ['quitUserId', 'quitNickname', 'quitPortraitUri', 'quitReason', 'quitTime', 'operatorId', 'operatorName']
+    }).then(function (exitedList) {
+      var newExitedList = [];
+      exitedList.forEach(function(item) {
+        item.quitUserId = Utility.encodeId(item.quitUserId);
+        item.operatorId = Utility.encodeId(item.operatorId);
+        newExitedList.push(item);
+      })
+      return res.send(new APIResult(200, Utility.encodeResults(newExitedList)));
+    })
+  })['catch'](next)
+})
+
+//定时清理群消息
+
+function getDateDiff(startingTime, endTime){
+	var usedTime = endTime - startingTime;
+	var days = Math.floor(usedTime/(24*3600*1000));
+	var leave1 = usedTime%(24*3600*1000);
+	var hours = Math.floor(leave1/(3600*1000));
+	var leave2 = leave1%(3600*1000);
+	var minutes = Math.floor(leave2/(60*1000));
+	return {days: days,  hours: hours, minutes: minutes };
+}
+
+// 删除历史消息
+function clearGroupMsg(creatorId, groupId, currentTime, clearTimeStamp) {
+  var currentUserId = creatorId,
+    targetId = groupId,
+    conversationType = 3;
+  console.log('clear-----',creatorId, groupId)
+  return new Promise(function (resolve, reject) {
+    return Group.update({
+      clearTimeAt: currentTime
+    },{
+      where: {
+        id: groupId
+      }
+    }).then(function() {
+      return GroupMember.findAll({
+        where: {
+          groupId: groupId
+        },
+        attributes: ['memberId']
+      }).then(function(members){
+        console.log(typeof members)
+        for(var i=0; i< members.length; i++){
+          console.log('memberId: ',members[i].memberId,'--',i)
+          rongCloud.message.clear({
+            fromUserId: Utility.encodeId(members[i].memberId),
+            targetId: Utility.encodeId(targetId),
+            conversationType: conversationType,
+            msgTimestamp: clearTimeStamp
+          }, function(err){
+            if(err){
+              Utility.logError('Error: clear group history msg failed: %s', err);
+              reject(err);
+            }
+          })
+          if(i === members.length-1){
+            sendGroupNtfMsg(creatorId, targetId, 'clearGroupMsg', 'ST:MsgClear', clearTimeStamp).then(function (){
+              resolve();
+            })
+          }
+        }
+      })
+    }).catch(function(err) {
+      console.log(err);
+      reject();
+    })
+  })
+}
+
+function setDelGroup(groupId, currentTimestamp, clearTimeAt, clearType, creatorId){
+  var timeDiff = getDateDiff(clearTimeAt, currentTimestamp);
+  var clearTimeStamp;
+  // 测试时间: 2 小时、 24 小时、 10 分钟
+  // if(clearType === 36){ // 36小时 对应 10 分钟 
+  //   var diffMinutes = timeDiff.days * 24 * 60 + timeDiff.hours * 60 + timeDiff.minutes;
+  //   clearTimeStamp = currentTimestamp - 180000; // 3分钟前
+  //   if(timeDiff.minutes != 0 && diffMinutes % 3 >= 0 && diffMinutes / 3 > 0){ 
+  //     clearGroupMsg(creatorId, groupId, currentTimestamp, clearTimeStamp)
+  //   }
+  // }else if(clearType === 3) {
+  //   var diffMinutes = timeDiff.days * 24 * 60 + timeDiff.hours * 60 + timeDiff.minutes;
+  //   clearTimeStamp = currentTimestamp - 300000; // 5分钟前
+  //   if(timeDiff.minutes != 0 && diffMinutes % 5 >= 0 && diffMinutes / 5 > 0){ 
+  //     clearGroupMsg(creatorId, groupId, currentTimestamp, clearTimeStamp)
+  //   }
+  // }else {
+  //   var diffMinutes = timeDiff.days * 24 * 60 + timeDiff.hours * 60 + timeDiff.minutes;
+  //   clearTimeStamp = currentTimestamp - 480000; // 8分钟前
+  //   if(timeDiff.minutes != 0 && diffMinutes % 8 >= 0 && diffMinutes / 8 > 0){ 
+  //     clearGroupMsg(creatorId, groupId, currentTimestamp, clearTimeStamp)
+  //   }
+  // }
+
+  // 生产时间: 36 小时、3 天、 7 天
+  if(clearType === 36){ // 36小时 对应 10 分钟 
+    var diffHours = timeDiff.days * 24 + timeDiff.hours;
+    clearTimeStamp = currentTimestamp - 129600000; // 36小时前
+    if(timeDiff.hours != 0 && diffHours % 36 >= 0 && diffHours / 36 > 0){ 
+      clearGroupMsg(creatorId, groupId, currentTimestamp, clearTimeStamp)
+    }
+  }else if(clearType === 3) {
+    var diffDays = timeDiff.days;
+    clearTimeStamp = currentTimestamp - 259200000; // 3天前
+    if(timeDiff.days != 0 && diffDays % 3 >= 0 && diffDays / 3 > 0){ 
+      clearGroupMsg(creatorId, groupId, currentTimestamp, clearTimeStamp)
+    }
+  }else {
+    var diffDays = timeDiff.days;
+    clearTimeStamp = currentTimestamp - 604800000; // 7天前
+    if(timeDiff.days != 0 && diffDays % 7 >= 0 && diffDays / 7 > 0){ 
+      clearGroupMsg(creatorId, groupId, currentTimestamp, clearTimeStamp)
+    }
+  }
+}
+
+function findClearGroup() {
+  //查出所有设置定时清理的群组
+  Group.findAll({
+    where: {
+      clearStatus: {
+        $in:[3, 7, 36]
+      }
+    },
+    attributes: ['id', 'creatorId', 'clearStatus', 'clearTimeAt']
+  }).then(function (groups) {
+    var delGroupArr = [];
+    var currentTimestamp = new Date().getTime();
+    //判断时间
+    groups.forEach(function(item){
+      // console.log(item.id, currentTimestamp, item.clearTimeAt, item.clearStatus, item.creatorId);
+      setDelGroup(item.id, currentTimestamp, item.clearTimeAt, item.clearStatus, item.creatorId);
+    })
+  })
+}
+
+//定时清理
+try {
+  setInterval(function() {
+    findClearGroup();
+  }, 3600000);
+  // 生产时间 3600000
+} catch (error) {
+  console.log('Group timing cleanup error')
+}
+
+
+router.post('/test_clear', function(req, res, next) {
+  var currentUserId = Session.getCurrentUserId(req),
+    targetId = req.body.targetId,
+    timestamp = req.body.time;
+  console.log(req.body, Utility.encodeId(targetId), currentUserId)
+  rongCloud.message.clear({
+    fromUserId: Utility.encodeId(currentUserId),
+    targetId:  Utility.encodeId(targetId),
+    conversationType: 3,
+    msgTimestamp: timestamp
+  }, function(err){
+    if(err){
+      Utility.logError('Error: clear group history msg failed: %s', err);
+      console.log(err)
+      return res.send(new APIResult(400, err));
+    }
+    // console.log('clear msg success:',creatorId, groupId)
+    return res.send(new APIResult(200));
+  })
 })
 module.exports = router;
