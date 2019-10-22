@@ -1332,6 +1332,35 @@ router.get('/find_user', function (req, res, next) {
   
 });
 
+router.post('/set_poke', function(req, res, next) {
+  var currentUserId = Session.getCurrentUserId(req);
+  var pokeStatus = req.body.pokeStatus;
+  if([0,1].indexOf(pokeStatus) == -1) {
+    return res.status(400).send('Illegal parameter .');
+   }
+  return User.update({
+    pokeStatus: pokeStatus
+  }, {
+      where: {
+        id: currentUserId
+      }
+    }).then(function () {
+      res.send(new APIResult(200));
+    })["catch"](next)
+})
+
+router.get('/get_poke', function(req, res, next) {
+  var currentUserId = Session.getCurrentUserId(req);
+  User.findOne({
+    where: {
+      id: currentUserId
+    },
+    attributes: ['pokeStatus']
+  }).then(function(user) {
+    res.send(new APIResult(200, Utility.encodeResults(user)));
+  })["catch"](next);
+})
+
 router.get('/:id', function (req, res, next) {
   var userId;
   userId = req.params.id;

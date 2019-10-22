@@ -5,9 +5,10 @@
 | [/misc/latest_update](#get-misclatest_update) | 注册新用户 |
 | [/misc/client_version](#get-miscclient_version) | 用户登录 |
 | [/misc/send_message](#post-miscsend_message) | 通过手机验证码设置新密码 |
-| [/misc/set_screen_capture](#post-miscset_screen_capture) | 截屏通知设置 |100%|
-| [/misc/get_screen_capture](#post-miscget_screen_capture) | 获取截屏通知状态 |100%|
-| [/misc/send_sc_msg](#post-miscsend_sc_msg) | 发送截屏通知消息 |100%|
+| [/misc/set_screen_capture](#post-miscset_screen_capture) | 截屏通知设置 |
+| [/misc/get_screen_capture](#post-miscget_screen_capture) | 获取截屏通知状态 |
+| [/misc/send_sc_msg](#post-miscsend_sc_msg) | 发送截屏通知消息 |
+
 ## API 说明
 
 ### GET /misc/latest_update?version=1.0.0
@@ -145,7 +146,7 @@ Server API 发送消息
 
 截屏通知设置
 
-参数|说明|数据类型|是否必填|
+|参数|说明|数据类型|是否必填|
 |---|----|------|------|
 |conversationType|会话类型：1 单聊、3 群聊|Number| 是|
 |targetId| 目标 Id|String| 是|
@@ -174,9 +175,9 @@ Server API 发送消息
 
 ### POST /misc/get_screen_capture
 
-获取截屏通知设置
+截屏通知设置
 
-参数|说明|数据类型|是否必填|
+|参数|说明|数据类型|是否必填|
 |---|----|------|------|
 |conversationType|会话类型：1 单聊、3 群聊|Number| 是|
 |targetId| 目标 Id|String| 是|
@@ -199,7 +200,7 @@ Server API 发送消息
 
 发送截屏通知消息
 
-参数|说明|数据类型|是否必填|
+|参数|说明|数据类型|是否必填|
 |---|----|------|------|
 |conversationType|会话类型：1 单聊、3 群聊|Number| 是|
 |targetId| 目标 Id|String| 是|

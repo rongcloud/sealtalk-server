@@ -1,4 +1,4 @@
-var APIResult, Blacklist, CONTACT_OPERATION_ACCEPT_RESPONSE, CONTACT_OPERATION_REQUEST, Cache, Config, DataVersion, FRIENDSHIP_AGREED, FRIENDSHIP_DELETED, FRIENDSHIP_IGNORED, FRIENDSHIP_REQUESTED, FRIENDSHIP_REQUESTING, FRIEND_DISPLAY_NAME_MAX_LENGTH, FRIEND_DISPLAY_NAME_MIN_LENGTH, FRIEND_REQUEST_MESSAGE_MAX_LENGTH, FRIEND_REQUEST_MESSAGE_MIN_LENGTH, Friendship, Group, GroupMember, GroupSync, LoginLog, Session, User, Utility, VerificationCode, express, moment, ref, rongCloud, router, sendContactNotification, sequelize, validator;
+var APIResult, Blacklist, CONTACT_OPERATION_ACCEPT_RESPONSE, CONTACT_OPERATION_REQUEST, Cache, Config, DataVersion, FRIENDSHIP_AGREED, FRIENDSHIP_DELETED, FRIENDSHIP_IGNORED, FRIENDSHIP_REQUESTED, FRIENDSHIP_REQUESTING, FRIEND_DISPLAY_NAME_MAX_LENGTH, FRIEND_DISPLAY_NAME_MIN_LENGTH, FRIEND_REQUEST_MESSAGE_MAX_LENGTH, FRIEND_REQUEST_MESSAGE_MIN_LENGTH, Friendship, Group, GroupMember, GroupSync, LoginLog, Session, User, Utility, VerificationCode, express, moment, ref, rongCloud, router, sendContactNotification, sequelize, validator, regionMap;
 
 express = require('express');
 
@@ -45,6 +45,10 @@ CONTACT_OPERATION_ACCEPT_RESPONSE = 'AcceptResponse';
 CONTACT_OPERATION_REQUEST = 'Request';
 
 var ENUM = require('../util/enum');
+
+regionMap = {
+  '86': 'zh-CN'
+};
 
 var RegistrationStatus = ENUM.RegistrationStatus;
 var RelationshipStatus = ENUM.RelationshipStatus;
@@ -131,7 +135,7 @@ router.post('/invite', function(req, res, next) {
             attributes: ['status']
           })
         ]).then(function(arg) {
-          console.log('arg:--',JSON.stringify(arg))
+          // console.log('arg:--',JSON.stringify(arg))
           var action, blacklist, fd, fdStatus, fg, fgStatus, resultMessage, unit;
           fg = arg[0], fd = arg[1], blacklist = arg[2];
           Utility.log('Friendship requesting: %j', fg);
@@ -170,6 +174,7 @@ router.post('/invite', function(req, res, next) {
               resultMessage = 'Request sent.';
             } else {
               Utility.log('Invite result: %s %s', 'None', 'Do nothing.');
+              // console.log('none ---')
               return res.send(new APIResult(200, {
                 action: 'None'
               }, 'Do nothing.'));
@@ -189,7 +194,6 @@ router.post('/invite', function(req, res, next) {
                   transaction: t
                 })
               ]).then(function() {
-                
                 return DataVersion.updateFriendshipVersion(currentUserId, timestamp).then(function() {
                   if (fd.status === FRIENDSHIP_REQUESTED) {
                     // console.log('---sendssss msg，直接添加');
@@ -200,13 +204,13 @@ router.post('/invite', function(req, res, next) {
                       Cache.del("friendship_all_" + currentUserId);
                       Cache.del("friendship_all_" + friendId);
                       Utility.log('Invite result: %s %s', action, resultMessage);
+                      // console.log('fd.status === FRIENDSHIP_REQUESTED')
                       return res.send(new APIResult(200, {
                         action: action
                       }, resultMessage));
                     });
                   } else {
                     removeBlackListPerson(currentUserId,friendId).then(function(result) {
-                      console.log('删除好友后再次添加');
                       Cache.del("friendship_all_" + currentUserId);
                       Cache.del("friendship_all_" + friendId);
                       Utility.log('Invite result: %s %s', action, resultMessage);
@@ -220,6 +224,7 @@ router.post('/invite', function(req, res, next) {
             });
           } else {
             if (friendId === currentUserId) {
+              console.log('fd.status !== FRIENDSHIP_REQUESTED')
               return Promise.all([
                 Friendship.create({
                   userId: currentUserId,
@@ -264,6 +269,7 @@ router.post('/invite', function(req, res, next) {
                     Cache.del("friendship_all_" + currentUserId);
                     Cache.del("friendship_all_" + friendId);
                     Utility.log('Invite result: %s %s', 'Sent', 'Request sent.');
+                    console.log('fd.status === FRIENDSHIP_REQUESTED232222')
                     return res.send(new APIResult(200, {
                       action: 'Sent'
                     }, 'Request sent.'));
@@ -619,4 +625,100 @@ router.post('/get_contacts_info', function (req, res, next) {
 });
 
 //设置备注和描述
+router.post('/set_friend_description', function (req, res, next) {
+  var currentUserId = Session.getCurrentUserId(req),
+    friendId = req.body.friendId,
+    displayName = req.body.displayName,
+    region = req.body.region,
+    phone = req.body.phone,
+    description = req.body.description,
+    imageUri = req.body.imageUri;
+  if(friendId == undefined) {
+    return res.status(400).send('friendId is empty.');
+  }
+  console.log(typeof region,Number(region))
+  var emptyRegion = phone && region == undefined;
+  var emptyPhone = region && phone == undefined;
+  if(emptyRegion || emptyPhone){
+    return res.status(400).send('region or phone is empty.');
+  }
+  
+  if(phone && region) {
+    var region = Number(region);
+    var regionName = regionMap[region];
+    // if (regionName && !validator.isMobilePhone(phone, regionName)) {
+    //   return res.status(400).send('Invalid region and phone number.');
+    // }
+  }
+  return Friendship.findOne({
+    where: {
+      userId: currentUserId,
+      friendId: friendId
+    },
+    attributes: ['displayName', 'region', 'phone', 'description', 'imageUri']
+  }).then(function (result) {
+    return Friendship.update({
+      displayName: displayName == undefined ? result.displayName : displayName,
+      region: region == undefined ? result.region : region,
+      phone: phone == undefined ? result.phone : phone,
+      description: description == undefined ? result.description : description,
+      imageUri: imageUri == undefined ? result.imageUri : imageUri
+    }, {
+      where: {
+        userId: currentUserId,
+        friendId: friendId
+      }
+    }).then(function () {
+      Cache.del("friendship_all_" + currentUserId);
+      return res.send(new APIResult(200));
+    })['catch'](next); 
+  })
+})
+
+//获取备注和描述
+router.post('/get_friend_description', function (req, res, next) {
+  var currentUserId = Session.getCurrentUserId(req),
+    friendId = req.body.friendId;
+  return Friendship.findOne({
+    where: {
+      userId: currentUserId,
+      friendId: friendId
+    },
+    attributes: ['displayName', 'region', 'phone', 'description', 'imageUri']
+  }).then(function (result) {
+    // Utility.encodeResults(user)
+    console.log(JSON.stringify(result))
+    return res.send(new APIResult(200, result));
+  })
+})
+
+//批量删除
+router.post('/batch_delete', function (req, res, next) {
+  var currentUserId = Session.getCurrentUserId(req),
+    friendIds = req.body.friendIds,
+    timestamp = Date.now();
+  console.log(req.body, friendIds)
+  return Friendship.update({
+    status: FRIENDSHIP_DELETED,
+    displayName: '',
+    message: '',
+    timestamp: timestamp
+  },{
+    where: {
+      userId: currentUserId,
+      friendId: {
+        $in: friendIds
+      },
+      status: FRIENDSHIP_AGREED //FRIENDSHIP_DELETED
+    }
+  }).then(function (result) {
+    //更新成功后添加到 IM 黑名单
+    rongCloud.user.blacklist.addCustom({
+      userId: Utility.encodeId(currentUserId)
+    },[ { field: 'blackUserId', values: Utility.encodeIds(friendIds)}],function(){
+      Cache.del("friendship_all_" + currentUserId);
+      return res.send(new APIResult(200, result));
+    })
+  });
+})
 module.exports = router;

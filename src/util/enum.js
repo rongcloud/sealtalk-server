@@ -28,6 +28,25 @@ var Error = {
   }
 };
 
+var CopyGroupError = {
+  PROTECTED: {
+    code: 20004,
+    msg: 'Protected'
+  },
+  COPIED: {
+    code: 20005,
+    msg: 'Copied'
+  },
+  NOT_EXIST: {
+    code: 20006,
+    msg: 'No Group'
+  },
+  LIMIT: {
+    code: 20007,
+    msg: 'Member Limit'
+  }
+}
+
 var GroupReceiverStatus = {
   IGNORE: 0, // 忽略
   AGREED: 1, // 同意
@@ -39,6 +58,12 @@ var GroupReceiverType = {
   MANAGER: 2,
   MEMBER: 1
 };
+
+var GroupExitedStatus = {
+  CREATOR: 0, //群主踢出
+  MANAGER: 1, //管理员踢出
+  SLEF: 2 //主动退出
+}
 
 var RegistrationStatus = {
   REGISTERED: 1,
@@ -59,11 +84,13 @@ var GroupAddStatus = {
 module.exports = {
   GroupRole,
   Error,
+  CopyGroupError,
   CertiStatus,
   GroupReceiverStatus,
   GroupReceiverType,
   OptPermissionRole,
   RegistrationStatus,
   RelationshipStatus,
-  GroupAddStatus
+  GroupAddStatus,
+  GroupExitedStatus
 };

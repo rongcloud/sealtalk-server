@@ -449,7 +449,7 @@ var groupFavMethods = {
       where: { userId: userId },
       include: {
         model: Group,
-        attributes: ['id', 'name', 'portraitUri', 'creatorId','isMute', 'certiStatus', 'memberCount', 'maxMemberCount', 'createdAt', 'updatedAt']
+        attributes: ['id', 'name', 'portraitUri', 'creatorId','isMute', 'certiStatus', 'memberCount', 'memberProtection', 'maxMemberCount', 'createdAt', 'updatedAt']
       }
     };
     if (utils.isInt(offset) && utils.isInt(limit)) {
@@ -691,6 +691,11 @@ User = sequelize.define('users', {
     allowNull: false,
     defaultValue: 1
   },
+  pokeStatus: {
+    type: Sequelize.INTEGER.UNSIGNED,
+    allowNull: false,
+    defaultValue: 1
+  },
   groupCount: {
     type: Sequelize.INTEGER.UNSIGNED,
     allowNull: false,
@@ -783,6 +788,26 @@ Friendship = sequelize.define('friendships', {
     allowNull: false,
     comment: '10: 请求, 11: 被请求, 20: 同意, 21: 忽略, 30: 被删除, 31: 被拉黑'
   },
+  region: {
+    type: Sequelize.STRING(32),
+    allowNull: true,
+    defaultValue: ''
+  },
+  phone: {
+    type: Sequelize.STRING(32),
+    allowNull: true,
+    defaultValue: ''
+  },
+  description: {
+    type: Sequelize.STRING(500),
+    allowNull: true,
+    defaultValue: ''
+  },
+  imageUri: {
+    type: Sequelize.STRING(256),
+    allowNull: true,
+    defaultValue: ''
+  },
   timestamp: {
     type: Sequelize.BIGINT.UNSIGNED,
     allowNull: false,
@@ -861,6 +886,17 @@ Group = sequelize.define('groups', {
     allowNull: false,
     defaultValue: 0,
     comment: '设置清除时间'
+  },
+  memberProtection: {
+    type: Sequelize.INTEGER.UNSIGNED,
+    allowNull: false,
+    defaultValue: 0,
+  },
+  copiedTime: {
+    type: Sequelize.BIGINT.UNSIGNED,
+    allowNull: false,
+    defaultValue: 0,
+    comment: '时间戳（版本号）'
   },
   timestamp: {
     type: Sequelize.BIGINT.UNSIGNED,
@@ -956,6 +992,36 @@ GroupMember = sequelize.define('group_members', {
     type: Sequelize.BOOLEAN,
     allowNull: false,
     defaultValue: false
+  },
+  groupNickname: {
+    type: Sequelize.STRING(32),
+    allowNull: false,
+    defaultValue: ''
+  },
+  region: {
+    type: Sequelize.STRING(32),
+    allowNull: true,
+    defaultValue: ''
+  },
+  phone: {
+    type: Sequelize.STRING(32),
+    allowNull: true,
+    defaultValue: ''
+  },
+  WeChat: {
+    type: Sequelize.STRING(32),
+    allowNull: true,
+    defaultValue: ''
+  },
+  Alipay: {
+    type: Sequelize.STRING(32),
+    allowNull: true,
+    defaultValue: ''
+  },
+  memberDesc: {
+    type: Sequelize.STRING(800),
+    allowNull: true,
+    defaultValue: ''
   },
   timestamp: {
     type: Sequelize.BIGINT.UNSIGNED,
@@ -1261,6 +1327,54 @@ ScreenStatus = sequelize.define('screen_statuses',{
   ]
 });
 
+GroupExitedList = sequelize.define('group_exited_list', {
+  id: {
+    type: Sequelize.INTEGER.UNSIGNED,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  groupId: {
+    type: Sequelize.INTEGER.UNSIGNED,
+    allowNull: false
+  },
+  quitUserId: {
+    type: Sequelize.INTEGER.UNSIGNED,
+    allowNull: false
+  },
+  quitNickname:{
+    type: Sequelize.STRING(32),
+    allowNull: false
+  },
+  quitPortraitUri: {
+    type: Sequelize.STRING(256),
+    allowNull: false,
+    defaultValue: ''
+  },
+  quitReason: {
+    type: Sequelize.INTEGER.UNSIGNED,
+    allowNull: false
+  },
+  quitTime: {
+    type: Sequelize.BIGINT,
+    allowNull: false,
+  },
+  operatorId: {
+    type: Sequelize.INTEGER.UNSIGNED,
+    allowNull: true
+  },
+  operatorName: {
+    type: Sequelize.STRING(32),
+    allowNull: true
+  }
+}, {
+  indexes: [
+    {
+      unique: true,
+      fields: ['id']
+    }
+  ]
+})
+
 // var salt = Utility.random(1000, 9999);
 // var hash = Utility.hash('123456', salt);
 // var test = {
@@ -1289,4 +1403,4 @@ ScreenStatus = sequelize.define('screen_statuses',{
 //   // console.log('error', e);
 // })
 
-module.exports = [sequelize, User, Blacklist, Friendship, Group, GroupMember, GroupSync, DataVersion, VerificationCode, LoginLog, VerificationViolation, GroupFav, GroupBulletin, GroupReceiver, ScreenStatus];
+module.exports = [sequelize, User, Blacklist, Friendship, Group, GroupMember, GroupSync, DataVersion, VerificationCode, LoginLog, VerificationViolation, GroupFav, GroupBulletin, GroupReceiver, ScreenStatus, GroupExitedList];
