@@ -8,9 +8,7 @@ var Utility = require('./util').Utility;
 
 var DEMO_TYPE = 1; // SealTalk
 
-var ADMIN_REPORT_URL = 'admin.rongcloud.cn',
-  DEBUG_ADMIN_DEPORT_URL = 'admin.rongcloud.net',
-  ADMIN_REPORT_PATH = '/demoApi/sendData';
+var ADMIN_REPORT_URL = 'admin report url';
 
 var request = (options) => {
   return new Promise((resolve, reject) => {
@@ -32,23 +30,7 @@ var request = (options) => {
 };
 
 var reportRegister = (phone, region, isDebug) => {
-  var content = `mobile=${phone}&demo_type=${DEMO_TYPE}&region=${region}`;
-  var options = {
-    hostname: isDebug ? DEBUG_ADMIN_DEPORT_URL : ADMIN_REPORT_URL,
-    path: ADMIN_REPORT_PATH,
-    method: 'POST',
-    content: content,
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded'
-    }
-  };
-  return request(options).then((result) => {
-    Utility.log('result', result);
-    return Promise.resolve(result);
-  }, (e) => {
-    Utility.log('error', e);
-    return Promise.reject(e);
-  });
+  // TODO 上报至您的管理后台
 };
 
 module.exports = {

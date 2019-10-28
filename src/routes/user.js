@@ -216,8 +216,9 @@ router.post('/send_code', function (req, res, next) {
 
 router.post('/send_code_yp', function (req, res, next) {
   var phone = req.body.phone,
-    region = req.body.region,
-    ip = getClientIp(req);
+    region = req.body.region;
+  console.log('+++++++')
+  var ip = getClientIp(req);
   region = formatRegion(region);
   if (Config.DEBUG) {
     return Promise.resolve().then(function(){
@@ -234,19 +235,29 @@ router.post('/send_code_yp', function (req, res, next) {
         return res.send(new APIResult(5000, null, 'Throttle limit exceeded.'));
       }
     }
-    return ViolationControl.check(ip)
-      .then(function () {
-        return sendYunPianCode(region, phone);
-      })
-      .then(function (result) {
-        newVerification.sessionId = result.sessionId;
-        return VerificationCode.upsert(newVerification).then(function () {
-          res.send(new APIResult(200));
-          return ViolationControl.update(ip);
-        });
-      }, function (err) {
-        res.send(new APIResult(err.code, err, err.msg));
+    if (req.app.get('env') === 'development') {
+      return VerificationCode.upsert({
+        region: region,
+        phone: phone,
+        sessionId: ''
+      }).then(function () {
+        return res.send(new APIResult(200));
       });
+    } else {
+      return ViolationControl.check(ip)
+        .then(function () {
+          return sendYunPianCode(region, phone);
+        })
+        .then(function (result) {
+          newVerification.sessionId = result.sessionId;
+          return VerificationCode.upsert(newVerification).then(function () {
+            res.send(new APIResult(200));
+            return ViolationControl.update(ip);
+          });
+        }, function (err) {
+          res.send(new APIResult(err.code, err, err.msg));
+        });
+    }
   })["catch"](next);
 });
 
@@ -301,6 +312,10 @@ router.post('/verify_code_yp', function (req, res, next) {
       return res.status(404).send('Unknown phone number.');
     } else if (moment().subtract(2, 'm').isAfter(verification.updatedAt)) {
       return res.send(new APIResult(2000, null, 'Verification code expired.'));
+    } else if ((req.app.get('env') === 'development') && code === '9999') {
+      return res.send(new APIResult(200, {
+        verification_token: verification.token
+      }));
     }
     var success = verification.sessionId == code;
     if (success) {

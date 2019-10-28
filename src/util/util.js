@@ -230,7 +230,10 @@ var getClientIp = function (req) {
       ipStr = ipStr.split(',')[0]
   }
   var ip = ipReg.exec(ipStr);
-  return ip[0];
+  if (ip) {
+    return ip[0];
+  }
+  return '';
 };
 
 var formatRegion = function (region) {
