@@ -49,7 +49,7 @@ module.exports = {
   // 本服务启动后占用的 HTTP 端口号
   SERVER_PORT: '8585', 
   // MySQL 数据库名称
-  DB_NAME: 'sealtalk', 
+  DB_NAME: 'sealtalk', // 需保证 mysql 中包含此库 
   // MySQL 数据库用户名
   DB_USER: 'devtalk', 
   // MySQL 数据库密码
