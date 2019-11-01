@@ -573,28 +573,29 @@
 ```
 {
   "code": 200,
-  "result": [
-    {
-      "id": "sdf9sd0df98",
-      "nickname": "Tom",
-      "portraitUri": "http://test.com/user/abc123.jpg",
-      "updatedAt": "TODO: DateTime Format",
-      "updatedTime": 1560234507805,,
-      "gender": "male", // 性别
-      "stAccount": "b323422", // SealTalk 号
-      "phone": "18701029999" // 手机号
-    },
-    {
-      "id": "fgh809fg098",
-      "nickname": "Jerry",
-      "portraitUri": "http://test.com/user/abc234.jpg",
-      "updatedAt": "TODO: DateTime Format",
-      "updatedTime": 1560234525563,
-      "gender": "male", // 性别
-      "stAccount": "b323422", // SealTalk 号
-      "phone": "18701029999" // 手机号
-    }
-  ]
+    "result": [{
+      "user": {
+        "id": "42e6LfSgN",
+        "nickname": "ceshi29",
+        "portraitUri": "",
+        "gender": "male",
+        "stAccount": "",
+        "phone": "18713578062",
+        "updatedAt": "2019-01-04T10:41:52.000Z",
+        "updatedTime": 1546598512000
+      }
+    }, {
+      "user": {
+        "id": "NyKWhpEUl",
+        "nickname": "ceshi299",
+        "portraitUri": "http://7xogjk.com1.z0.glb.clouddn.com/FnFGwIuINAbC49zoLSY8L_swdk2B",
+        "gender": "male",
+        "stAccount": "",
+        "phone": "18600650648",
+        "updatedAt": "2019-09-04T12:54:40.000Z",
+        "updatedTime": 1567601680000
+      }
+    }]
 }
 ```
 
