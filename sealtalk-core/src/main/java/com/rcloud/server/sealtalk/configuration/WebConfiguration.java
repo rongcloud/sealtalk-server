@@ -72,7 +72,7 @@ public class WebConfiguration implements WebMvcConfigurer {
         String[] corsHosts = sealtalkConfig.getCorsHosts();
         var mapping = registry.addMapping("/**")
             .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-            .allowedHeaders("Content-Type", "x-requested-with", "Authorization", "token", "Accept", "Referer", "User-Agent", "auth_key")
+            .allowedHeaders("*")
             .allowCredentials(true)
             .maxAge(3600);
 

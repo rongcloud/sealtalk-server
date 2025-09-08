@@ -64,6 +64,10 @@ public class IpInterceptor implements HandlerInterceptor {
         }
         String originHeader = request.getHeader("Origin");
         log.info("request ip:[{}], port:[{}], userAgent:[{}], uri:[{}][{}], origin:[{}]", requestUriInfo.getIp(), requestUriInfo.getPort(), requestUriInfo.getUserAgent(), requestUriInfo.getMethod(), requestUriInfo.getUri(), originHeader);
+        if(request.getMethod().equals("OPTIONS")){
+            response.setStatus(HttpServletResponse.SC_OK);
+            return false;
+        }
         return true;
     }
 

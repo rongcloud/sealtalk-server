@@ -28,14 +28,14 @@ public class AdminAuthInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
 
 
-        String authKey = request.getHeader("auth_key");
+        String authKey = request.getHeader("auth-key");
         if (StringUtils.isNotBlank(sealtalkConfig.getAdminAuthKey()) && !sealtalkConfig.getAdminAuthKey().equals(authKey)){
             Map<String, String> respBody = new HashMap<>();
             respBody.put("code", String.valueOf(ErrorCode.NOT_LOGIN.getErrorCode()));
             respBody.put("msg", "admin auth error");
             response.getWriter().write(JacksonUtil.toJson(respBody));
             response.setStatus(HttpStatus.FORBIDDEN.value());
-            log.info("request error authKey [{}]", authKey);
+            log.info("request error auth-key [{}]", authKey);
             return false;
         }
         return true;
