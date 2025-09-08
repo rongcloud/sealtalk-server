@@ -436,7 +436,7 @@ CREATE TABLE `verification_violations` (
 CREATE TABLE `white_list` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `region` varchar(5) NOT NULL,
-  `phone` varchar(11) NOT NULL,
+  `phone` varchar(30) NOT NULL,
   `type` int unsigned NOT NULL COMMENT '白名单类型',
   `created_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

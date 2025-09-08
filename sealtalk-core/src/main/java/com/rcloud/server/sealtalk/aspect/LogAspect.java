@@ -15,6 +15,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Aspect
@@ -47,16 +48,16 @@ public class LogAspect {
             }
             String target = joinPoint.getSignature().getDeclaringTypeName() + "." + joinPoint.getSignature().getName();
             Object[] args = joinPoint.getArgs();
-            String[] paramsName = methodSignature.getParameterNames();
 
-            Map<String, Object> paramMap = new HashMap<>();
-            if (args != null && paramsName != null && args.length > 0 && paramsName.length > 0) {
-                for (int i = 0; i < paramsName.length; i++) {
-                    String paramName = paramsName[i];
+            Map<String, Object> paramMap = new LinkedHashMap<>();
+            if (args != null && args.length > 0) {
+                for (int i = 0; i < args.length; i++) {
                     Object paramVal = args[i];
-                    if (!(paramVal instanceof HttpServletResponse) && !(paramVal instanceof HttpServletRequest)) {
-                        paramMap.put(paramName, args[i]);
+                    if (paramVal instanceof HttpServletResponse || paramVal instanceof HttpServletRequest) {
+                        continue;
                     }
+                    String name = "arg" + i;
+                    paramMap.put(name, paramVal);
                 }
             }
 
