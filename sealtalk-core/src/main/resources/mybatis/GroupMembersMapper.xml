@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rcloud.server.sealtalk.dao.GroupMembersMapper">
+    <resultMap id="BaseResultMap" type="com.rcloud.server.sealtalk.entity.GroupMembers">
+        <!--
+          WARNING - @mbg.generated
+        -->
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="groupId" jdbcType="INTEGER" property="groupId"/>
+        <result column="memberId" jdbcType="INTEGER" property="memberId"/>
+        <result column="displayName" jdbcType="VARCHAR" property="displayName"/>
+        <result column="role" jdbcType="INTEGER" property="role"/>
+        <result column="groupNickname" jdbcType="VARCHAR" property="groupNickname"/>
+        <result column="region" jdbcType="VARCHAR" property="region"/>
+        <result column="phone" jdbcType="VARCHAR" property="phone"/>
+        <result column="WeChat" jdbcType="VARCHAR" property="weChat"/>
+        <result column="Alipay" jdbcType="VARCHAR" property="alipay"/>
+        <result column="memberDesc" jdbcType="VARCHAR" property="memberDesc"/>
+        <result column="createdAt" jdbcType="TIMESTAMP" property="createdAt"/>
+        <result column="updatedAt" jdbcType="TIMESTAMP" property="updatedAt"/>
+    </resultMap>
+
+
+    <resultMap id="resultMapWithGroups" type="com.rcloud.server.sealtalk.entity.GroupMembers">
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="groupId" jdbcType="INTEGER" property="groupId"/>
+        <result column="memberId" jdbcType="INTEGER" property="memberId"/>
+        <result column="displayName" jdbcType="VARCHAR" property="displayName"/>
+        <result column="role" jdbcType="INTEGER" property="role"/>
+        <result column="groupNickname" jdbcType="VARCHAR" property="groupNickname"/>
+        <result column="region" jdbcType="VARCHAR" property="region"/>
+        <result column="phone" jdbcType="VARCHAR" property="phone"/>
+        <result column="WeChat" jdbcType="VARCHAR" property="weChat"/>
+        <result column="Alipay" jdbcType="VARCHAR" property="alipay"/>
+        <result column="memberDesc" jdbcType="VARCHAR" property="memberDesc"/>
+        <result column="createdAt" jdbcType="TIMESTAMP" property="createdAt"/>
+        <result column="updatedAt" jdbcType="TIMESTAMP" property="updatedAt"/>
+        <association property="groups" javaType="com.rcloud.server.sealtalk.entity.Groups">
+            <id column="g_id" jdbcType="INTEGER" property="id"/>
+            <result column="g_name" jdbcType="VARCHAR" property="name"/>
+            <result column="g_portraitUri" jdbcType="VARCHAR" property="portraitUri"/>
+            <result column="g_creatorId" jdbcType="INTEGER" property="creatorId"/>
+            <result column="g_memberCount" jdbcType="INTEGER" property="memberCount"/>
+            <result column="g_isMute" jdbcType="INTEGER" property="isMute"/>
+            <result column="g_certiStatus" jdbcType="INTEGER" property="certiStatus"/>
+        </association>
+    </resultMap>
+
+    <resultMap id="resultMapWithUsers" type="com.rcloud.server.sealtalk.entity.GroupMembers">
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="groupId" jdbcType="INTEGER" property="groupId"/>
+        <result column="memberId" jdbcType="INTEGER" property="memberId"/>
+        <result column="displayName" jdbcType="VARCHAR" property="displayName"/>
+        <result column="role" jdbcType="INTEGER" property="role"/>
+        <result column="groupNickname" jdbcType="VARCHAR" property="groupNickname"/>
+        <result column="region" jdbcType="VARCHAR" property="region"/>
+        <result column="phone" jdbcType="VARCHAR" property="phone"/>
+        <result column="WeChat" jdbcType="VARCHAR" property="weChat"/>
+        <result column="Alipay" jdbcType="VARCHAR" property="alipay"/>
+        <result column="memberDesc" jdbcType="VARCHAR" property="memberDesc"/>
+        <result column="createdAt" jdbcType="TIMESTAMP" property="createdAt"/>
+        <result column="updatedAt" jdbcType="TIMESTAMP" property="updatedAt"/>
+        <association property="users" javaType="com.rcloud.server.sealtalk.entity.Users">
+            <id column="user_id" jdbcType="INTEGER" property="id"/>
+            <result column="user_nickname" jdbcType="VARCHAR" property="nickname"/>
+            <result column="user_portraitUri" jdbcType="VARCHAR" property="portraitUri"/>
+            <result column="user_gender" jdbcType="INTEGER" property="gender"/>
+            <result column="user_stAccount" jdbcType="INTEGER" property="stAccount"/>
+            <result column="user_phone" jdbcType="INTEGER" property="phone"/>
+            <result column="user_region" jdbcType="INTEGER" property="region"/>
+        </association>
+    </resultMap>
+
+    <select id="queryGroupMembersWithGroupByMemberId" resultMap="resultMapWithGroups" >
+    SELECT gm.*,
+       g.id g_id,
+       g.name g_name,
+       g.portraitUri g_portraitUri,
+       g.creatorId g_creatorId,
+       g.memberCount g_memberCount,
+       g.isMute g_isMute,
+       g.certiStatus g_certiStatus,
+       g.timestamp g_timestamp
+    FROM group_members gm join `groups` g
+    on gm.groupId = g.id
+    where gm.memberId=#{memberId} and g.deletedAt is null ;
+  </select>
+
+   <select id="queryGroupMembersWithUsersByGroupId" resultMap="resultMapWithUsers">
+    SELECT gm.*,
+       u.id user_id,
+       u.region user_region,
+       u.nickname user_nickname,
+       u.portraitUri user_portraitUri,
+       u.gender user_gender,
+       u.stAccount user_stAccount,
+       u.phone user_phone
+    FROM group_members gm join `users` u
+    on gm.memberId = u.id
+    where gm.groupId=#{groupId}
+  </select>
+
+  <select id="queryGroupMembersWithGroupByGroupIdAndMemberId" resultMap="resultMapWithGroups">
+    SELECT gm.*,
+       g.id g_id,
+       g.name g_name,
+       g.portraitUri g_portraitUri,
+       g.creatorId g_creatorId,
+       g.memberCount g_memberCount,
+       g.isMute g_isMute,
+       g.certiStatus g_certiStatus
+    FROM group_members gm join `groups` g
+    on gm.groupId = g.id
+    where gm.groupId = #{groupId} and gm.memberId=#{memberId}  ;
+  </select>
+
+    <select id="groupMemberCnt" resultType="java.lang.Integer">
+        SELECT count(id) FROM group_members WHERE groupId = #{groupId}
+    </select>
+
+    <update id="updateByPrimaryKeySelective" parameterType="com.rcloud.server.sealtalk.entity.GroupMembers">
+        UPDATE group_members
+        <set>
+            <if test="groupNickname != null">groupNickname = #{groupNickname},</if>
+            <if test="displayName != null">displayName = #{displayName},</if>
+            <if test="role != null">role = #{role},</if>
+            <if test="region != null">region = #{region},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="weChat != null">WeChat = #{weChat},</if>
+            <if test="alipay != null">Alipay = #{alipay},</if>
+            <if test="memberDesc != null">memberDesc = #{memberDesc},</if>
+            updatedAt = now()
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <select id="selectByGroupIdAndMemberIds" resultMap="BaseResultMap">
+        SELECT * FROM group_members WHERE groupId = #{groupId} AND memberId IN
+        <foreach collection="memberIds" item="memberId" open="(" separator="," close=")">
+            #{memberId}
+        </foreach>
+    </select>
+
+    <update id="updateRoleByGroupIdAndMemberIds">
+        UPDATE group_members SET role = #{role}, updatedAt = now() WHERE groupId = #{groupId} AND memberId IN
+        <foreach collection="memberIds" item="memberId" open="(" separator="," close=")">
+            #{memberId}
+        </foreach>
+    </update>
+
+    <delete id="deleteByGroupIdAndMemberIds">
+        DELETE FROM group_members WHERE groupId = #{groupId} AND memberId IN
+        <foreach collection="memberIds" item="memberId" open="(" separator="," close=")">
+            #{memberId}
+        </foreach>
+    </delete>
+
+    <delete id="deleteByGroupId">
+        DELETE FROM group_members WHERE groupId = #{groupId}
+    </delete>
+
+    <delete id="deleteByMemberId">
+        DELETE FROM group_members WHERE memberId = #{memberId}
+    </delete>
+
+    <insert id="insertIgnoreBatch" parameterType="java.util.List">
+        INSERT IGNORE INTO group_members (groupId, memberId, role, createdAt, updatedAt) VALUES
+        <foreach collection="groupMemberList" item="gm" separator=",">
+            (#{gm.groupId}, #{gm.memberId}, #{gm.role}, now(), now())
+        </foreach>
+    </insert>
+
+    <select id="selectByMemberId" resultMap="BaseResultMap">
+        select * from group_members where memberId = #{memberId}
+    </select>
+
+    <select id="countByMemberIds" resultType="java.util.Map">
+        SELECT memberId, count(id) as count FROM group_members WHERE memberId IN
+        <foreach collection="memberIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        GROUP BY memberId
+    </select>
+
+    <select id="selectByGroupIdAndMemberId" resultMap="BaseResultMap">
+        select * from group_members where groupId = #{groupId} and memberId = #{memberId}
+    </select>
+
+    <select id="selectByGroupId" resultMap="BaseResultMap">
+        select * from group_members where groupId = #{groupId}
+    </select>
+
+    <select id="selectByGroupIdAndRoles" resultMap="BaseResultMap">
+        SELECT * FROM group_members WHERE groupId = #{groupId} AND role IN
+        <foreach collection="roles" item="role" open="(" separator="," close=")">
+            #{role}
+        </foreach>
+    </select>
+
+    
+</mapper>

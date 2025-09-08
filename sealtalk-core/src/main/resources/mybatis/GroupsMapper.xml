@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rcloud.server.sealtalk.dao.GroupsMapper">
+  <resultMap id="BaseResultMap" type="com.rcloud.server.sealtalk.entity.Groups">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="id" jdbcType="INTEGER" property="id" />
+    <result column="name" jdbcType="VARCHAR" property="name" />
+    <result column="portraitUri" jdbcType="VARCHAR" property="portraitUri" />
+    <result column="memberCount" jdbcType="INTEGER" property="memberCount" />
+    <result column="maxMemberCount" jdbcType="INTEGER" property="maxMemberCount" />
+    <result column="creatorId" jdbcType="INTEGER" property="creatorId" />
+    <result column="certiStatus" jdbcType="INTEGER" property="certiStatus" />
+    <result column="isMute" jdbcType="INTEGER" property="isMute" />
+    <result column="clearStatus" jdbcType="INTEGER" property="clearStatus" />
+    <result column="clearTimeAt" jdbcType="BIGINT" property="clearTimeAt" />
+    <result column="memberProtection" jdbcType="INTEGER" property="memberProtection" />
+    <result column="copiedTime" jdbcType="BIGINT" property="copiedTime" />
+    <result column="createdAt" jdbcType="TIMESTAMP" property="createdAt" />
+    <result column="updatedAt" jdbcType="TIMESTAMP" property="updatedAt" />
+    <result column="bulletin" jdbcType="LONGVARCHAR" property="bulletin" />
+  </resultMap>
+
+  <insert id="insertSelective" parameterType="com.rcloud.server.sealtalk.entity.Groups" useGeneratedKeys="true" keyProperty="id">
+    insert into groups
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+      <if test="name != null">name,</if>
+      <if test="portraitUri != null">portraitUri,</if>
+      <if test="memberCount != null">memberCount,</if>
+      <if test="creatorId != null">creatorId,</if>
+      <if test="memberProtection != null">memberProtection,</if>
+      createdAt, updatedAt,
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides=",">
+      <if test="name != null">#{name},</if>
+      <if test="portraitUri != null">#{portraitUri},</if>
+      <if test="memberCount != null">#{memberCount},</if>
+      <if test="creatorId != null">#{creatorId},</if>
+      <if test="memberProtection != null">#{memberProtection},</if>
+      now(), now(),
+    </trim>
+  </insert>
+
+  <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+    select * from groups where id = #{id}
+  </select>
+
+    <select id="selectByIds" resultMap="BaseResultMap">
+        SELECT * FROM groups WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
+    <update id="updateByPrimaryKeySelective" parameterType="com.rcloud.server.sealtalk.entity.Groups">
+        UPDATE groups
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="portraitUri != null">portraitUri = #{portraitUri},</if>
+            <if test="memberCount != null">memberCount = #{memberCount},</if>
+            <if test="maxMemberCount != null">maxMemberCount = #{maxMemberCount},</if>
+            <if test="creatorId != null">creatorId = #{creatorId},</if>
+            <if test="certiStatus != null">certiStatus = #{certiStatus},</if>
+            <if test="isMute != null">isMute = #{isMute},</if>
+            <if test="clearStatus != null">clearStatus = #{clearStatus},</if>
+            <if test="clearTimeAt != null">clearTimeAt = #{clearTimeAt},</if>
+            <if test="memberProtection != null">memberProtection = #{memberProtection},</if>
+            <if test="copiedTime != null">copiedTime = #{copiedTime},</if>
+            <if test="bulletin != null">bulletin = #{bulletin},</if>
+            updatedAt = now()
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteByPrimaryKey">
+        DELETE FROM groups WHERE id = #{id}
+    </delete>
+</mapper>

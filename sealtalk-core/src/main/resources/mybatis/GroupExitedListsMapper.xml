@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rcloud.server.sealtalk.dao.GroupExitedListsMapper">
+  <resultMap id="BaseResultMap" type="com.rcloud.server.sealtalk.entity.GroupExitedLists">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="id" jdbcType="INTEGER" property="id" />
+    <result column="groupId" jdbcType="INTEGER" property="groupId" />
+    <result column="quitUserId" jdbcType="INTEGER" property="quitUserId" />
+    <result column="quitNickname" jdbcType="VARCHAR" property="quitNickname" />
+    <result column="quitPortraitUri" jdbcType="VARCHAR" property="quitPortraitUri" />
+    <result column="quitReason" jdbcType="INTEGER" property="quitReason" />
+    <result column="quitTime" jdbcType="BIGINT" property="quitTime" />
+    <result column="operatorId" jdbcType="INTEGER" property="operatorId" />
+    <result column="operatorName" jdbcType="VARCHAR" property="operatorName" />
+    <result column="createdAt" jdbcType="TIMESTAMP" property="createdAt" />
+    <result column="updatedAt" jdbcType="TIMESTAMP" property="updatedAt" />
+  </resultMap>
+
+  <delete id="deleteByGroupIdAndQuitUserIds">
+    DELETE FROM group_exited_lists WHERE groupId = #{groupId} AND quitUserId IN
+    <foreach collection="quitUserIds" item="quitUserId" open="(" separator="," close=")">
+      #{quitUserId}
+    </foreach>
+  </delete>
+
+  <delete id="deleteByGroupId">
+    DELETE FROM group_exited_lists WHERE groupId = #{groupId}
+  </delete>
+
+  <insert id="insertBatch" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO group_exited_lists (groupId, quitUserId, quitNickname, quitPortraitUri, quitReason, quitTime, operatorId, operatorName, createdAt, updatedAt)
+    VALUES
+    <foreach collection="list" item="item" separator=",">
+      (#{item.groupId}, #{item.quitUserId}, #{item.quitNickname}, #{item.quitPortraitUri}, #{item.quitReason}, #{item.quitTime}, #{item.operatorId}, #{item.operatorName}, now(), now())
+    </foreach>
+  </insert>
+
+  <select id="selectByGroupId" resultMap="BaseResultMap">
+    SELECT * FROM group_exited_lists WHERE groupId = #{groupId}
+  </select>
+</mapper>

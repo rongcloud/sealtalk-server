@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rcloud.server.sealtalk.dao.UgUserGroupMapper">
+  <resultMap id="BaseResultMap" type="com.rcloud.server.sealtalk.entity.UgUserGroup">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="id" property="id"/>
+    <result column="name" property="name"/>
+    <result column="group_id" property="groupId"/>
+    <result column="creator_id" property="creatorId"/>
+  </resultMap>
+
+  <insert id="insert" parameterType="com.rcloud.server.sealtalk.entity.UgUserGroup" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO ug_usergroup (name, group_id, creator_id) VALUES (#{name}, #{groupId}, #{creatorId})
+  </insert>
+
+  <select id="queryByGroupIdAndIds" resultType="long">
+    select id from ug_usergroup where group_id = #{groupId} and id in
+    <foreach collection="ids" item="item" open="(" separator="," close=")">
+      #{item}
+    </foreach>
+  </select>
+
+  <select id="queryByGroupIdPage"  resultMap="BaseResultMap">
+    select id,name,group_id,creator_id from ug_usergroup where group_id = #{groupId} order by id limit #{offset},#{limit}
+  </select>
+
+  <select id="selectByGroupId" resultMap="BaseResultMap">
+    SELECT * FROM ug_usergroup WHERE group_id = #{groupId}
+  </select>
+
+  <select id="selectById" resultMap="BaseResultMap">
+    SELECT * FROM ug_usergroup WHERE id = #{id}
+  </select>
+
+  <delete id="deleteByGroupId">
+    DELETE FROM ug_usergroup WHERE group_id = #{groupId}
+  </delete>
+
+  <delete id="deleteById">
+    DELETE FROM ug_usergroup WHERE id = #{id}
+  </delete>
+</mapper>

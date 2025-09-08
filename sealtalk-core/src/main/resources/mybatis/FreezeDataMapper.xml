@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rcloud.server.sealtalk.dao.FreezeDataMapper">
+  <resultMap id="BaseResultMap" type="com.rcloud.server.sealtalk.entity.FreezeData">
+    <id column="id" property="id" />
+    <result column="phone" property="phone" />
+    <result column="region" property="region" />
+    <result column="user_id" property="userId" />
+    <result column="freeze_time" property="freezeTime" />
+    <result column="data" property="data" />
+  </resultMap>
+  <insert id="insert" parameterType="com.rcloud.server.sealtalk.entity.FreezeData" useGeneratedKeys="true" keyProperty="id">
+    insert into freeze_data (phone, region, user_id, freeze_time, data) values (#{phone}, #{region}, #{userId}, #{freezeTime}, #{data})
+  </insert>
+</mapper>

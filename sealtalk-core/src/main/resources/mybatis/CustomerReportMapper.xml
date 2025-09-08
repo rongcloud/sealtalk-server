@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rcloud.server.sealtalk.dao.CustomerReportMapper">
+  <resultMap id="BaseResultMap" type="com.rcloud.server.sealtalk.entity.CustomerReport">
+    <id column="id" property="id" />
+    <result column="report_id" property="reportId" />
+    <result column="target_id" property="targetId" />
+    <result column="channel_type" property="channelType" />
+    <result column="report_level_first" property="reportLevelFirst" />
+    <result column="report_level_second" property="reportLevelSecond" />
+    <result column="pic" property="pic" />
+    <result column="content" property="content" />
+  </resultMap>
+
+  <insert id="insertSelective" parameterType="com.rcloud.server.sealtalk.entity.CustomerReport" useGeneratedKeys="true" keyProperty="id">
+    insert into customer_report
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+      report_id, target_id, channel_type,
+      <if test="reportLevelFirst != null">
+        report_level_first,
+      </if>
+      <if test="reportLevelSecond != null">
+        report_level_second,
+      </if>
+      <if test="pic != null">
+        pic,
+      </if>
+      <if test="content != null">
+        content,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides=",">
+      #{reportId}, #{targetId}, #{channelType},
+      <if test="reportLevelFirst != null">
+        #{reportLevelFirst},
+      </if>
+      <if test="reportLevelSecond != null">
+        #{reportLevelSecond},
+      </if>
+      <if test="pic != null">
+        #{pic},
+      </if>
+      <if test="content != null">
+        #{content},
+      </if>
+    </trim>
+  </insert>
+</mapper>

@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rcloud.server.sealtalk.dao.UgChannelUserGroupMapper">
+  <resultMap id="BaseResultMap" type="com.rcloud.server.sealtalk.entity.UgChannelUserGroup">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="id" property="id"/>
+    <result column="channel_id" property="channelId"/>
+    <result column="usergroup_id" property="userGroupId"/>
+  </resultMap>
+
+
+  <resultMap id="UserGroupResultMap" type="com.rcloud.server.sealtalk.entity.UgUserGroup">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="id" property="id"/>
+    <result column="name" property="name"/>
+  </resultMap>
+
+
+  <select id="queryByChannelIdAndUserGroupIds" resultType="long">
+    select usergroup_id from ug_channel_usergroup where channel_id = #{channelId} and usergroup_id in
+    <foreach collection="userGroupIds" item="item" open="(" separator="," close=")">
+      #{item}
+    </foreach>
+  </select>
+
+  <insert id="insertBatch" >
+    insert ignore into ug_channel_usergroup(channel_id,usergroup_id) values
+    <foreach collection="list" item="item" separator=",">
+      (#{item.channelId},#{item.userGroupId})
+    </foreach>
+
+  </insert>
+
+  <delete id="delBatch" >
+    delete from ug_channel_usergroup where channel_id = #{channelId} and usergroup_id in
+    <foreach collection="userGroupIds" item="item" open="(" separator="," close=")">
+      #{item}
+    </foreach>
+  </delete>
+
+  <delete id="deleteByChannelIds">
+    DELETE FROM ug_channel_usergroup WHERE channel_id IN
+    <foreach collection="channelIds" item="item" open="(" separator="," close=")">
+      #{item}
+    </foreach>
+  </delete>
+
+  <delete id="deleteByUserGroupIds">
+    DELETE FROM ug_channel_usergroup WHERE usergroup_id IN
+    <foreach collection="userGroupIds" item="item" open="(" separator="," close=")">
+      #{item}
+    </foreach>
+  </delete>
+
+  <select id="selectByChannelIds" resultMap="BaseResultMap">
+    SELECT * FROM ug_channel_usergroup WHERE channel_id IN
+    <foreach collection="channelIds" item="item" open="(" separator="," close=")">
+      #{item}
+    </foreach>
+  </select>
+
+
+  <select id="selectByChannelId" resultMap="BaseResultMap">
+    SELECT * FROM ug_channel_usergroup WHERE channel_id = #{channelId}
+  </select>
+
+  <select id="queryByChannelIdPage" resultMap="UserGroupResultMap">
+    select t1.usergroup_id as id, t2.name as name from ug_channel_usergroup t1 left join ug_usergroup t2 on t1.usergroup_id = t2.id
+    where t1.channel_id = #{channelId} and t2.id is not null order by t2.id limit #{offset},#{limit}
+  </select>
+
+</mapper>

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rcloud.server.sealtalk.dao.BotUserBindMapper">
+  <resultMap id="BaseResultMap" type="com.rcloud.server.sealtalk.entity.BotUserBind">
+    <id column="id" jdbcType="BIGINT" property="id" />
+    <result column="bot_id" jdbcType="VARCHAR" property="botId" />
+    <result column="user_id" jdbcType="BIGINT" property="userId" />
+    <result column="bind_type" property="bindType" />
+    <result column="created_time" jdbcType="TIMESTAMP" property="createdTime" />
+    <result column="updated_time" jdbcType="TIMESTAMP" property="updatedTime" />
+  </resultMap>
+
+  <sql id="Base_Column_List">
+    id, bot_id, user_id, created_time, updated_time
+  </sql>
+
+  <select id="selectByUserId"  resultMap="BaseResultMap">
+    select 
+    <include refid="Base_Column_List" />
+    from bot_user_bind
+    where user_id = #{userId}
+    and bind_type = #{bindType}
+    order by created_time desc
+  </select>
+
+  <select id="selectByBotId" parameterType="java.lang.String" resultMap="BaseResultMap">
+    select 
+    <include refid="Base_Column_List" />
+    from bot_user_bind
+    where bot_id = #{botId}
+    order by created_time desc
+  </select>
+
+  <select id="selectByUserIdAndBotId" resultMap="BaseResultMap">
+    select 
+    <include refid="Base_Column_List" />
+    from bot_user_bind
+    where user_id = #{userId} and bot_id = #{botId}
+  </select>
+
+  <delete id="deleteByUserIdAndBotId">
+    delete from bot_user_bind
+    where user_id = #{userId} and bot_id = #{botId}
+  </delete>
+
+  <insert id="batchInsert" parameterType="java.util.List">
+    insert ignore into bot_user_bind (bot_id, user_id, bind_type)
+    values
+    <foreach collection="list" item="item" separator=",">
+      (#{item.botId}, #{item.userId}, #{item.bindType})
+    </foreach>
+  </insert>
+
+  <delete id="deleteByBotId" parameterType="java.lang.String">
+    delete from bot_user_bind
+    where bot_id = #{botId}
+  </delete>
+
+  <delete id="batchDeleteByBotIdAndUserIds">
+    delete from bot_user_bind
+    where bot_id = #{botId}
+      and user_id in
+      <foreach collection="userIds" item="uid" open="(" close=")" separator=",">
+        #{uid}
+      </foreach>
+  </delete>
+
+</mapper> 

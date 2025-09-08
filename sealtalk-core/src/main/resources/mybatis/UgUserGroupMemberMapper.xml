@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rcloud.server.sealtalk.dao.UgUserGroupMemberMapper">
+  <resultMap id="BaseResultMap" type="com.rcloud.server.sealtalk.entity.UgUserGroupMember">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="id" property="id"/>
+    <result column="usergroup_id" property="userGroupId"/>
+    <result column="member_id" property="memberId"/>
+  </resultMap>
+
+  <resultMap id= "UserBaseResultMap"  type="com.rcloud.server.sealtalk.entity.Users">
+    <id column="id"  property="id"/>
+    <result column="nickname" property="nickname"/>
+    <result column="portraitUri" property="portraitUri"/>
+    <result column="gender" property="gender"/>
+    <result column="phone" property="phone"/>
+    <result column="region" property="region"/>
+  </resultMap>
+
+
+  <insert id="insertBatch" parameterType="list">
+    insert ignore into ug_usergroup_member(usergroup_id,member_id) values
+    <foreach collection="list" item="item" separator=",">
+      ( #{item.userGroupId},#{item.memberId} )
+    </foreach>
+
+
+  </insert>
+
+  <select id="queryMembers" resultType="int">
+    select member_id from ug_usergroup_member where usergroup_id = #{userGroupId} and member_id in
+    <foreach collection="memberIds" item="item" open="(" separator="," close=")">
+      #{item}
+    </foreach>
+  </select>
+
+  <delete id="delBatch" >
+    delete from ug_usergroup_member where usergroup_id = #{userGroupId} and member_id in
+    <foreach collection="memberIds" item="item" open="(" separator="," close=")">
+      #{item}
+    </foreach>
+  </delete>
+
+  <select id="selectByUserGroupIdAndMemberId" resultMap="BaseResultMap">
+    SELECT * FROM ug_usergroup_member WHERE usergroup_id = #{userGroupId} AND member_id = #{memberId}
+  </select>
+
+  <select id="selectByUserGroupId" resultMap="BaseResultMap">
+    SELECT * FROM ug_usergroup_member WHERE usergroup_id = #{userGroupId}
+  </select>
+
+  <delete id="deleteByUserGroupIds">
+    DELETE FROM ug_usergroup_member WHERE usergroup_id IN
+    <foreach collection="userGroupIds" item="item" open="(" separator="," close=")">
+      #{item}
+    </foreach>
+  </delete>
+
+  <delete id="deleteByMemberIds">
+    DELETE FROM ug_usergroup_member WHERE member_id IN
+    <foreach collection="memberIds" item="item" open="(" separator="," close=")">
+      #{item}
+    </foreach>
+  </delete>
+
+  <select id="queryByUserGroupIdPage" resultMap="UserBaseResultMap">
+    select t2.id as id,
+           t2.nickname as nickname,
+           t2.portraitUri as portraitUri,
+           t2.gender as gender,
+           t2.region as region,
+           t2.phone as phone
+    from ug_usergroup_member t1 left join `users` t2 on t1.member_id = t2.id
+    where t1.usergroup_id = #{userGroupId} and t2.id is not null
+    order by t1.id limit #{offset},#{limit}
+  </select>
+
+  <select id="memberCount" resultType="map">
+    select usergroup_id as userGroupId, count(*) as num from ug_usergroup_member where usergroup_id in
+    <foreach collection="userGroupIds" item="item" open="(" separator="," close=")">
+      #{item}
+    </foreach>
+    group by usergroup_id
+  </select>
+</mapper>

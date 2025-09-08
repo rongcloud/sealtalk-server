@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rcloud.server.sealtalk.dao.MsgCallbackMapper">
+  <resultMap id="BaseResultMap" type="com.rcloud.server.sealtalk.entity.MsgCallback">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="id" jdbcType="INTEGER" property="id" />
+    <result column="user_id" jdbcType="INTEGER" property="userId" />
+    <result column="target_id" jdbcType="VARCHAR" property="targetId" />
+    <result column="channel_type" jdbcType="VARCHAR" property="channelType" />
+    <result column="msg_type" jdbcType="VARCHAR" property="msgType" />
+    <result column="msg_id" jdbcType="VARCHAR" property="msgId" />
+    <result column="msg_time" jdbcType="TIMESTAMP" property="msgTime" />
+    <result column="strategy" jdbcType="VARCHAR" property="strategy" />
+    <result column="risk_status" jdbcType="VARCHAR" property="riskStatus" />
+    <result column="created_at" jdbcType="TIMESTAMP" property="createdAt" />
+    <result column="msg_content" jdbcType="LONGVARBINARY" property="msgContent" />
+  </resultMap>
+</mapper>

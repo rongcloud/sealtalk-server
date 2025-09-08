@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rcloud.server.sealtalk.dao.UrlStoreMapper">
+  <resultMap id="BaseResultMap" type="com.rcloud.server.sealtalk.entity.UrlStore">
+    <id column="id" jdbcType="BIGINT" property="id" />
+    <result column="url" jdbcType="VARCHAR" property="url" />
+    <result column="created_time" jdbcType="TIMESTAMP" property="createdTime" />
+    <result column="updated_time" jdbcType="TIMESTAMP" property="updatedTime" />
+  </resultMap>
+
+  <insert id="insert" parameterType="com.rcloud.server.sealtalk.entity.UrlStore" useGeneratedKeys="true" keyProperty="id">
+    insert into url_store (url, created_time, updated_time) values (#{url}, NOW(), NOW())
+  </insert>
+
+  <delete id="deleteByPrimaryKey" parameterType="java.lang.Long">
+    delete from url_store where id = #{id}
+  </delete>
+
+  <select id="selectAll" resultMap="BaseResultMap">
+    select * from url_store
+  </select>
+</mapper>
+
+

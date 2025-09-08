@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rcloud.server.sealtalk.dao.RiskListMapper">
+  <resultMap id="BaseResultMap" type="com.rcloud.server.sealtalk.entity.RiskList">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="id" jdbcType="INTEGER" property="id" />
+    <result column="user_id" jdbcType="INTEGER" property="userId" />
+    <result column="risk_status" jdbcType="VARCHAR" property="riskStatus" />
+    <result column="ip" jdbcType="VARCHAR" property="ip" />
+    <result column="device_id" jdbcType="VARCHAR" property="deviceId" />
+    <result column="detail" jdbcType="VARCHAR" property="detail" />
+    <result column="other_detail" jdbcType="VARCHAR" property="otherDetail" />
+    <result column="created_at" jdbcType="TIMESTAMP" property="createdAt" />
+  </resultMap>
+
+  <insert id="insertSelective" parameterType="com.rcloud.server.sealtalk.entity.RiskList" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO risk_list
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+      <if test="userId != null">user_id,</if>
+      <if test="riskStatus != null">risk_status,</if>
+      <if test="ip != null">ip,</if>
+      <if test="deviceId != null">device_id,</if>
+      <if test="detail != null">detail,</if>
+      <if test="otherDetail != null">other_detail,</if>
+      created_at
+    </trim>
+    <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
+      <if test="userId != null">#{userId},</if>
+      <if test="riskStatus != null">#{riskStatus},</if>
+      <if test="ip != null">#{ip},</if>
+      <if test="deviceId != null">#{deviceId},</if>
+      <if test="detail != null">#{detail},</if>
+      <if test="otherDetail != null">#{otherDetail},</if>
+      now()
+    </trim>
+  </insert>
+
+  <update id="updateByUserIdAndDeviceIdSelective" parameterType="com.rcloud.server.sealtalk.entity.RiskList">
+    UPDATE risk_list
+    <set>
+      <if test="riskStatus != null">risk_status = #{riskStatus},</if>
+      <if test="ip != null">ip = #{ip},</if>
+      <if test="detail != null">detail = #{detail},</if>
+      <if test="otherDetail != null">other_detail = #{otherDetail},</if>
+    </set>
+    WHERE user_id = #{userId} AND device_id = #{deviceId}
+  </update>
+
+  <select id="selectByUserIdAndDeviceId" resultMap="BaseResultMap">
+    SELECT * FROM risk_list WHERE user_id = #{userId} AND device_id = #{deviceId}
+  </select>
+</mapper>

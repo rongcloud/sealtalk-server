@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rcloud.server.sealtalk.dao.FriendshipsMapper">
+    <resultMap id="BaseResultMap" type="com.rcloud.server.sealtalk.entity.Friendships">
+        <!--
+          WARNING - @mbg.generated
+        -->
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="userId" jdbcType="INTEGER" property="userId"/>
+        <result column="friendId" jdbcType="INTEGER" property="friendId"/>
+        <result column="displayName" jdbcType="VARCHAR" property="displayName"/>
+        <result column="message" jdbcType="VARCHAR" property="message"/>
+        <result column="status" jdbcType="INTEGER" property="status"/>
+        <result column="region" jdbcType="VARCHAR" property="region"/>
+        <result column="phone" jdbcType="VARCHAR" property="phone"/>
+        <result column="description" jdbcType="VARCHAR" property="description"/>
+        <result column="imageUri" jdbcType="VARCHAR" property="imageUri"/>
+        <result column="createdAt" jdbcType="TIMESTAMP" property="createdAt"/>
+        <result column="updatedAt" jdbcType="TIMESTAMP" property="updatedAt"/>
+    </resultMap>
+
+    <resultMap id="withUserResultMap" extends="BaseResultMap" type="com.rcloud.server.sealtalk.entity.Friendships">
+        <association property="users" javaType="com.rcloud.server.sealtalk.entity.Users">
+            <id column="u_user_id" jdbcType="INTEGER" property="id"/>
+            <result column="u_user_nickname" jdbcType="VARCHAR" property="nickname"/>
+            <result column="u_user_portraitUri" jdbcType="VARCHAR" property="portraitUri"/>
+            <result column="u_user_gender" jdbcType="VARCHAR" property="gender"/>
+            <result column="u_user_stAccount" jdbcType="VARCHAR" property="stAccount"/>
+            <result column="u_user_phone" jdbcType="VARCHAR" property="phone"/>
+            <result column="u_user_updatedAt" jdbcType="TIMESTAMP" property="updatedAt"/>
+            <result column="u_user_createdAt" jdbcType="TIMESTAMP" property="createdAt"/>
+            <result column="u_user_region" jdbcType="TIMESTAMP" property="region"/>
+        </association>
+    </resultMap>
+
+
+    <select id="getFriendShipListWithUsers" resultMap="withUserResultMap">
+        select
+         f.displayName,
+         f.message,
+         f.status,
+         f.updatedAt,
+         u.id as u_user_id,
+         u.nickname as u_user_nickname,
+         u.region as u_user_region,
+         u.portraitUri as u_user_portraitUri,
+         u.gender as u_user_gender,
+         u.stAccount as u_user_stAccount,
+         u.phone as u_user_phone,
+         u.createdAt as u_user_createdAt,
+         u.updatedAt as u_user_updatedAt
+         from
+        friendships f join users u on f.friendId = u.id
+        where f.userId=#{userId}
+
+  </select>
+
+    <select id="getFriendShipWithUsers" resultMap="withUserResultMap">
+        select
+         f.displayName,
+         u.id as u_user_id,
+         u.nickname as u_user_nickname,
+         u.portraitUri as u_user_portraitUri,
+         u.gender as u_user_gender,
+         u.stAccount as u_user_stAccount,
+         u.region as u_user_region,
+         u.phone as u_user_phone,
+         u.createdAt as u_user_createdAt,
+         u.updatedAt as u_user_updatedAt
+         from
+        friendships f join users u on f.friendId = u.id
+        where f.userId=#{userId}
+        and f.friendId = #{friendId}
+        and f.status = #{status}
+
+  </select>
+
+  <select id="selectByUserIdAndFriendId" resultMap="BaseResultMap">
+    select * from friendships where userId = #{userId} and friendId = #{friendId}
+  </select>
+
+  <update id="updateByUserIdAndFriendIdSelective" parameterType="com.rcloud.server.sealtalk.entity.Friendships">
+    update friendships
+    <set>
+      updatedAt = NOW(),
+      <if test="displayName != null">displayName = #{displayName},</if>
+      <if test="message != null">message = #{message},</if>
+      <if test="status != null">status = #{status},</if>
+      <if test="region != null">region = #{region},</if>
+      <if test="phone != null">phone = #{phone},</if>
+      <if test="description != null">description = #{description},</if>
+      <if test="imageUri != null">imageUri = #{imageUri},</if>
+    </set>
+    where userId = #{userId} and friendId = #{friendId}
+  </update>
+
+  <insert id="saveOrUpdate" parameterType="com.rcloud.server.sealtalk.entity.Friendships">
+    insert into friendships(userId, friendId, status, message, createdAt, updatedAt) values(#{userId}, #{friendId}, #{status}, #{message}, now(), now()) on duplicate key update status = #{status}, message = #{message}, updatedAt = NOW()
+  </insert>
+
+  <select id="selectByUserIdAndStatus" resultMap="BaseResultMap">
+    select * from friendships where userId = #{userId} and status IN
+    <foreach collection="status" item="item" open="(" separator="," close=")">
+      #{item}
+    </foreach>
+  </select>
+
+  <select id="selectByUserIdAndFriendIds" resultMap="BaseResultMap">
+    select * from friendships where userId = #{userId} and friendId IN
+    <foreach collection="friendIds" item="friendId" open="(" separator="," close=")">
+      #{friendId}
+    </foreach>
+  </select>
+
+  <update id="updateStatusByUserIdAndFriendIds">
+    update friendships set status = #{status}, updatedAt = NOW() where userId = #{userId} and friendId IN
+    <foreach collection="friendIds" item="friendId" open="(" separator="," close=")">
+      #{friendId}
+    </foreach>
+  </update>
+
+  <delete id="deleteByUserIdOrFriendId" parameterType="java.lang.Integer">
+    delete from friendships where userId=#{userId} or friendId=#{userId}
+  </delete>
+
+
+</mapper>

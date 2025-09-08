@@ -1,0 +1,48 @@
+server:
+  port: ${sealtalk-config.server_port}
+  tomcat:
+    uri-encoding: UTF-8
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
+      enabled: true
+      force-request: true
+      force-response: true
+  shutdown: graceful
+
+spring:
+  config:
+    import:
+      - classpath:sealtalk-config.yml
+  flyway:
+    enabled: true
+    clean-disabled: true
+    baseline-description: baselines
+    baseline-on-migrate: true
+    baseline-version: 1
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    driverClassName: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${sealtalk-config.db_host}:${sealtalk-config.db_port}/${sealtalk-config.db_name}?allowPublicKeyRetrieval=true&useSSL=false&characterEncoding=utf8&useCompress=true
+    username: ${sealtalk-config.db_user}
+    password: ${sealtalk-config.db_password}
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      connection-timeout: 5000
+mybatis:
+  mapper-locations: classpath:mybatis/*.xml
+  type-aliases-package: com.example.demo.model
+  configuration:
+    map-underscore-to-camel-case: true
+    default-executor-type: REUSE
+
+logging:
+  config: classpath:logback-config.xml

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rcloud.server.sealtalk.dao.ConfigListMapper">
+  <resultMap id="BaseResultMap" type="com.rcloud.server.sealtalk.entity.ConfigList">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="id" jdbcType="INTEGER" property="id" />
+    <result column="att_key" jdbcType="VARCHAR" property="attKey" />
+    <result column="att_value" jdbcType="VARCHAR" property="attValue" />
+    <result column="update_at" jdbcType="TIMESTAMP" property="updateAt" />
+    <result column="created_at" jdbcType="TIMESTAMP" property="createdAt" />
+  </resultMap>
+
+  <insert id="insert" parameterType="com.rcloud.server.sealtalk.entity.ConfigList" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO config_list (att_key, att_value, created_at, update_at)
+    VALUES (#{attKey}, #{attValue}, now(), now())
+    ON DUPLICATE KEY UPDATE att_value = VALUES(att_value), update_at = now()
+  </insert>
+
+  <select id="selectByKey" resultMap="BaseResultMap">
+    SELECT * FROM config_list WHERE att_key = #{attKey}
+  </select>
+
+  <delete id="deleteByKey">
+    DELETE FROM config_list WHERE att_key = #{attKey}
+  </delete>
+
+  <select id="selectAll" resultMap="BaseResultMap">
+    SELECT * FROM config_list
+  </select>
+</mapper>

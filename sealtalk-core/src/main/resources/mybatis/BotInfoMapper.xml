@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rcloud.server.sealtalk.dao.BotInfoMapper">
+  <resultMap id="BaseResultMap" type="com.rcloud.server.sealtalk.entity.BotInfo">
+    <id column="id" jdbcType="BIGINT" property="id" />
+    <result column="bot_id" jdbcType="VARCHAR" property="botId" />
+    <result column="name" jdbcType="VARCHAR" property="name" />
+    <result column="portraitUri" jdbcType="VARCHAR" property="portraitUri" />
+    <result column="opening_message" jdbcType="VARCHAR" property="openingMessage" />
+    <result column="bot_type" jdbcType="INTEGER" property="botType" />
+    <result column="bot_status" jdbcType="TINYINT" property="botStatus" />
+    <result column="created_time" jdbcType="TIMESTAMP" property="createdTime" />
+    <result column="updated_time" jdbcType="TIMESTAMP" property="updatedTime" />
+  </resultMap>
+
+  <sql id="Base_Column_List">
+    id, bot_id, name, portraitUri, opening_message, bot_type, bot_status, created_time, updated_time
+  </sql>
+
+  <select id="queryAllBot" resultMap="BaseResultMap">
+    select 
+    <include refid="Base_Column_List" />
+    from bot_info
+    order by id desc
+    limit #{limit}
+  </select>
+
+  <select id="selectByBotId" parameterType="java.lang.String" resultMap="BaseResultMap">
+    select 
+    <include refid="Base_Column_List" />
+    from bot_info
+    where bot_id = #{botId}
+  </select>
+
+  <select id="selectByBotType" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+    select 
+    <include refid="Base_Column_List" />
+    from bot_info
+    where bot_type = #{botType}
+    order by id desc
+  </select>
+
+  <select id="countAll" resultType="java.lang.Integer">
+    select count(*) from bot_info
+  </select>
+
+  <insert id="insertBot" parameterType="com.rcloud.server.sealtalk.entity.BotInfo" useGeneratedKeys="true" keyProperty="id">
+    insert into bot_info (bot_id, name, portraitUri, opening_message, bot_type, bot_status)
+    values (#{botId}, #{name}, #{portraitUri}, #{openingMessage}, #{botType}, #{botStatus})
+  </insert>
+
+  <delete id="deleteByBotId" parameterType="java.lang.String">
+    delete from bot_info
+    where bot_id = #{botId}
+  </delete>
+
+  <update id="updateByBotId" parameterType="com.rcloud.server.sealtalk.entity.BotInfo">
+    update bot_info
+    <set>
+      <if test="name != null and name != ''">
+        name = #{name},
+      </if>
+      <if test="portraitUri != null and portraitUri != ''">
+        portraitUri = #{portraitUri},
+      </if>
+      <if test="openingMessage != null and openingMessage != ''">
+        opening_message = #{openingMessage},
+      </if>
+      <if test="botType != null">
+        bot_type = #{botType},
+      </if>
+      <if test="botStatus != null">
+        bot_status = #{botStatus},
+      </if>
+      updated_time = now()
+    </set>
+    where bot_id = #{botId}
+  </update>
+
+</mapper> 

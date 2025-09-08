@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rcloud.server.sealtalk.dao.GroupBulletinsMapper">
+  <resultMap id="BaseResultMap" type="com.rcloud.server.sealtalk.entity.GroupBulletins">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="id" jdbcType="INTEGER" property="id" />
+    <result column="groupId" jdbcType="INTEGER" property="groupId" />
+    <result column="createdAt" jdbcType="TIMESTAMP" property="createdAt" />
+    <result column="updatedAt" jdbcType="TIMESTAMP" property="updatedAt" />
+    <result column="content" jdbcType="LONGVARCHAR" property="content" />
+  </resultMap>
+
+  <insert id="insert" parameterType="com.rcloud.server.sealtalk.entity.GroupBulletins" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO group_bulletins (groupId, content, createdAt, updatedAt) VALUES (#{groupId}, #{content}, now(), now())
+  </insert>
+
+  <select id="getLastestGroupBulletin" resultMap="BaseResultMap">
+    select * from group_bulletins where groupId = #{groupId} order by createdAt desc limit 1
+  </select>
+
+  <delete id="deleteByGroupId">
+    DELETE FROM group_bulletins WHERE groupId = #{groupId}
+  </delete>
+</mapper>

@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rcloud.server.sealtalk.dao.UsersMapper">
+  <resultMap id="BaseResultMap" type="com.rcloud.server.sealtalk.entity.Users">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="id" jdbcType="INTEGER" property="id" />
+    <result column="region" jdbcType="VARCHAR" property="region" />
+    <result column="phone" jdbcType="VARCHAR" property="phone" />
+    <result column="nickname" jdbcType="VARCHAR" property="nickname" />
+    <result column="portraitUri" jdbcType="VARCHAR" property="portraitUri" />
+    <result column="rongCloudToken" jdbcType="VARCHAR" property="rongCloudToken" />
+    <result column="gender" jdbcType="VARCHAR" property="gender" />
+    <result column="stAccount" jdbcType="VARCHAR" property="stAccount" />
+    <result column="phoneVerify" jdbcType="INTEGER" property="phoneVerify" />
+    <result column="stSearchVerify" jdbcType="INTEGER" property="stSearchVerify" />
+    <result column="friVerify" jdbcType="INTEGER" property="friVerify" />
+    <result column="groupVerify" jdbcType="INTEGER" property="groupVerify" />
+    <result column="pokeStatus" jdbcType="INTEGER" property="pokeStatus" />
+    <result column="groupCount" jdbcType="INTEGER" property="groupCount" />
+    <result column="createdAt" jdbcType="TIMESTAMP" property="createdAt" />
+    <result column="updatedAt" jdbcType="TIMESTAMP" property="updatedAt" />
+    <result column="blockStatus" jdbcType="INTEGER" property="blockStatus" />
+    <result column="lastIp" jdbcType="VARCHAR" property="lastIp" />
+    <result column="blockStartTime" jdbcType="TIMESTAMP" property="blockStartTime" />
+    <result column="blockEndTime" jdbcType="TIMESTAMP" property="blockEndTime" />
+  </resultMap>
+
+  <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+    select * from users where id = #{id}
+  </select>
+
+  <delete id="deleteById">
+    delete from users where id = #{id}
+  </delete>
+
+  <select id="selectByIds" resultMap="BaseResultMap">
+    select * from users where id IN
+    <foreach collection="ids" item="id" open="(" separator="," close=")">
+      #{id}
+    </foreach>
+  </select>
+
+  <select id="selectByRegionAndPhone" resultMap="BaseResultMap">
+    select * from users where region = #{region} and phone = #{phone}
+  </select>
+
+  <select id="selectByStAccount" resultMap="BaseResultMap">
+    select * from users where stAccount = #{stAccount}
+  </select>
+
+  <insert id="insertSelective" parameterType="com.rcloud.server.sealtalk.entity.Users" useGeneratedKeys="true" keyProperty="id">
+    insert into users
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+      region, phone, nickname, createdAt, updatedAt,
+      <if test="portraitUri != null">portraitUri,</if>
+      <if test="rongCloudToken != null">rongCloudToken,</if>
+      <if test="gender != null">gender,</if>
+      <if test="stAccount != null">stAccount,</if>
+      <if test="phoneVerify != null">phoneVerify,</if>
+      <if test="stSearchVerify != null">stSearchVerify,</if>
+      <if test="friVerify != null">friVerify,</if>
+      <if test="groupVerify != null">groupVerify,</if>
+      <if test="pokeStatus != null">pokeStatus,</if>
+      <if test="groupCount != null">groupCount,</if>
+      <if test="blockStatus != null">blockStatus,</if>
+      <if test="lastIp != null">lastIp,</if>
+      <if test="blockStartTime != null">blockStartTime,</if>
+      <if test="blockEndTime != null">blockEndTime,</if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides=",">
+      #{region}, #{phone}, #{nickname}, #{createdAt}, #{updatedAt},
+      <if test="portraitUri != null">#{portraitUri},</if>
+      <if test="rongCloudToken != null">#{rongCloudToken},</if>
+      <if test="gender != null">#{gender},</if>
+      <if test="stAccount != null">#{stAccount},</if>
+      <if test="phoneVerify != null">#{phoneVerify},</if>
+      <if test="stSearchVerify != null">#{stSearchVerify},</if>
+      <if test="friVerify != null">#{friVerify},</if>
+      <if test="groupVerify != null">#{groupVerify},</if>
+      <if test="pokeStatus != null">#{pokeStatus},</if>
+      <if test="groupCount != null">#{groupCount},</if>
+      <if test="blockStatus != null">#{blockStatus},</if>
+      <if test="lastIp != null">#{lastIp},</if>
+      <if test="blockStartTime != null">#{blockStartTime},</if>
+      <if test="blockEndTime != null">#{blockEndTime},</if>
+    </trim>
+  </insert>
+
+  <update id="updateByPrimaryKeySelective" parameterType="com.rcloud.server.sealtalk.entity.Users">
+    update users
+    <set>
+      updatedAt = NOW(),
+      <if test="nickname != null">nickname = #{nickname},</if>
+      <if test="portraitUri != null">portraitUri = #{portraitUri},</if>
+      <if test="rongCloudToken != null">rongCloudToken = #{rongCloudToken},</if>
+      <if test="gender != null">gender = #{gender},</if>
+      <if test="stAccount != null">stAccount = #{stAccount},</if>
+      <if test="phoneVerify != null">phoneVerify = #{phoneVerify},</if>
+      <if test="stSearchVerify != null">stSearchVerify = #{stSearchVerify},</if>
+      <if test="friVerify != null">friVerify = #{friVerify},</if>
+      <if test="groupVerify != null">groupVerify = #{groupVerify},</if>
+      <if test="pokeStatus != null">pokeStatus = #{pokeStatus},</if>
+      <if test="groupCount != null">groupCount = #{groupCount},</if>
+      <if test="deletedAt != null">deletedAt = #{deletedAt},</if>
+      <if test="blockStatus != null">blockStatus = #{blockStatus},</if>
+      <if test="lastIp != null">lastIp = #{lastIp},</if>
+      <if test="blockStartTime != null">blockStartTime = #{blockStartTime},</if>
+      <if test="blockEndTime != null">blockEndTime = #{blockEndTime},</if>
+    </set>
+    where id = #{id}
+  </update>
+
+  <select id="selectByPhones" resultMap="BaseResultMap">
+    select * from users where phone IN
+    <foreach collection="phones" item="phone" open="(" separator="," close=")">
+      #{phone}
+    </foreach>
+  </select>
+</mapper>

@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rcloud.server.sealtalk.dao.AiTemplateMapper">
+
+  <resultMap id="AiTemplateMap" type="com.rcloud.server.sealtalk.entity.AiTemplate">
+    <id column="id" property="id" />
+    <result column="template_id" property="templateId" />
+    <result column="template_name" property="templateName" />
+    <result column="system_prompt" property="systemPrompt" />
+    <result column="language" property="language" />
+    <result column="created_time" property="createdTime" />
+    <result column="updated_time" property="updatedTime" />
+  </resultMap>
+
+  <insert id="insert" parameterType="com.rcloud.server.sealtalk.entity.AiTemplate" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO ai_template (template_id, template_name, system_prompt, language)
+    VALUES (#{templateId}, #{templateName}, #{systemPrompt}, #{language})
+  </insert>
+
+  <insert id="batchInsert">
+    INSERT INTO ai_template (template_id, template_name, system_prompt, language)
+    VALUES
+    <foreach collection="list" item="item" separator=",">
+      (#{item.templateId}, #{item.templateName}, #{item.systemPrompt}, #{item.language})
+    </foreach>
+  </insert>
+
+  <update id="updateByTemplateId" parameterType="com.rcloud.server.sealtalk.entity.AiTemplate">
+    UPDATE ai_template
+    <set>
+      <if test="templateName != null">template_name = #{templateName},</if>
+      <if test="systemPrompt != null">system_prompt = #{systemPrompt},</if>
+      <if test="language != null">language = #{language},</if>
+    </set>
+    WHERE template_id = #{templateId}
+  </update>
+
+  <update id="updateByTemplateIdAndLanguage" parameterType="com.rcloud.server.sealtalk.entity.AiTemplate">
+    UPDATE ai_template
+    <set>
+      <if test="templateName != null">template_name = #{templateName},</if>
+      <if test="systemPrompt != null">system_prompt = #{systemPrompt},</if>
+    </set>
+    WHERE template_id = #{templateId} AND language = #{language}
+  </update>
+
+  <delete id="deleteByTemplateId">
+    DELETE FROM ai_template WHERE template_id = #{templateId}
+  </delete>
+
+  <select id="selectByTemplateId" resultMap="AiTemplateMap">
+    SELECT * FROM ai_template WHERE template_id = #{templateId}
+  </select>
+
+  <select id="selectByTemplateIdAndLanguage" resultMap="AiTemplateMap">
+    SELECT * FROM ai_template WHERE template_id = #{templateId} AND language = #{language}
+  </select>
+
+  <select id="pageQuery" resultMap="AiTemplateMap">
+    SELECT * FROM ai_template
+    <where>
+      <if test="search != null and search != ''">
+        AND (template_name LIKE CONCAT('%', #{search}, '%'))
+      </if>
+    </where>
+    ORDER BY updated_time DESC
+    LIMIT #{limit}
+  </select>
+
+  <select id="count" resultType="int">
+    SELECT COUNT(1) FROM ai_template
+    <where>
+      <if test="search != null and search != ''">
+        AND (template_name LIKE CONCAT('%', #{search}, '%'))
+      </if>
+    </where>
+  </select>
+
+  <select id="selectByTemplateIds" resultMap="AiTemplateMap">
+    SELECT * FROM ai_template WHERE template_id in
+    <foreach collection="templateIds" item="id" open="(" close=")" separator=",">
+      #{id}
+    </foreach>
+  </select>
+
+</mapper>
+
+

@@ -1,0 +1,10 @@
+[
+  {
+    "region": "default",
+    "device": "default",
+    "templateCode": "{ali_template_code}",
+    "service": "AliSmsService",
+    "url": "dysmsapi.aliyuncs.com",
+    "signName": "signName"
+  }
+]

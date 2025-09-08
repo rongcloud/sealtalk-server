@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rcloud.server.sealtalk.dao.LoginTokenMapper">
+  <resultMap id="BaseResultMap" type="com.rcloud.server.sealtalk.entity.LoginToken">
+    <id column="id"  property="id" />
+    <result column="user_id" property="userId" />
+    <result column="login_time" property="loginTime" />
+  </resultMap>
+
+  <insert id="insert" parameterType="com.rcloud.server.sealtalk.entity.LoginToken" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO login_token (user_id, login_time, create_time, update_time) VALUES (#{userId}, #{loginTime}, now(), now())
+  </insert>
+
+  <select id="selectByPrimaryKey" resultMap="BaseResultMap">
+    SELECT * FROM login_token WHERE id = #{id}
+  </select>
+
+  <delete id="deleteByPrimaryKey">
+    DELETE FROM login_token WHERE id = #{id}
+  </delete>
+</mapper>

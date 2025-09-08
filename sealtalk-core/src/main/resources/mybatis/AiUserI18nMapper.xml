@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rcloud.server.sealtalk.dao.AiUserI18nMapper">
+
+  <resultMap id="AiUserI18nMap" type="com.rcloud.server.sealtalk.entity.AiUserI18n">
+    <id column="id" property="id" />
+    <result column="ai_user_id" property="aiUserId" />
+    <result column="language" property="language" />
+    <result column="nickname" property="nickname" />
+    <result column="area" property="area" />
+    <result column="profession" property="profession" />
+    <result column="introduction" property="introduction" />
+    <result column="tags" property="tags" />
+    <result column="opening_remark" property="openingRemark" />
+    <result column="created_time" property="createdTime" />
+    <result column="updated_time" property="updatedTime" />
+  </resultMap>
+
+  <insert id="insert" parameterType="com.rcloud.server.sealtalk.entity.AiUserI18n" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO ai_user_i18n (ai_user_id, language, nickname, area, profession, introduction, tags, opening_remark)
+    VALUES (#{aiUserId}, #{language}, #{nickname}, #{area}, #{profession}, #{introduction}, #{tags}, #{openingRemark})
+  </insert>
+
+  <insert id="batchInsert">
+    INSERT INTO ai_user_i18n (ai_user_id, language, nickname, area, profession, introduction, tags, opening_remark)
+    VALUES
+    <foreach collection="list" item="i" separator=",">
+      (#{i.aiUserId}, #{i.language}, #{i.nickname}, #{i.area}, #{i.profession}, #{i.introduction}, #{i.tags}, #{i.openingRemark})
+    </foreach>
+  </insert>
+
+  <select id="selectByAiUserId" resultMap="AiUserI18nMap">
+    SELECT * FROM ai_user_i18n WHERE ai_user_id = #{aiUserId}
+  </select>
+
+  <select id="selectByAiUserIds" resultMap="AiUserI18nMap">
+    SELECT * FROM ai_user_i18n WHERE ai_user_id IN
+    <foreach collection="aiUserIds" item="id" open="(" close=")" separator=",">
+      #{id}
+    </foreach>
+  </select>
+
+  <delete id="deleteByAiUserId">
+    DELETE FROM ai_user_i18n WHERE ai_user_id = #{aiUserId}
+  </delete>
+
+</mapper>
+
+

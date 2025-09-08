@@ -1,0 +1,9 @@
+/.idea/
+**/target/
+/release/
+**/logs/
+*.gz
+*.iml
+*.log
+**/build
+**/.DS_Store

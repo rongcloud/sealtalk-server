@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rcloud.server.sealtalk.dao.AiUserMapper">
+
+  <resultMap id="AiUserMap" type="com.rcloud.server.sealtalk.entity.AiUser">
+    <id column="id" property="id" />
+    <result column="ai_user_id" property="aiUserId" />
+    <result column="template_id" property="templateId" />
+    <result column="avatar" property="avatar" />
+    <result column="gender" property="gender" />
+    <result column="age" property="age" />
+    <result column="open" property="open" />
+    <result column="system_prompt" property="systemPrompt" />
+    <result column="create_source" property="createSource" />
+    <result column="create_type" property="createType" />
+    <result column="creator_id" property="creatorId" />
+    <result column="created_time" property="createdTime" />
+    <result column="updated_time" property="updatedTime" />
+  </resultMap>
+
+  <insert id="insert" parameterType="com.rcloud.server.sealtalk.entity.AiUser" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO ai_user (ai_user_id, template_id, avatar, gender, age, `open`, system_prompt, create_source, create_type, creator_id)
+    VALUES (#{aiUserId}, #{templateId}, #{avatar}, #{gender}, #{age}, #{open}, #{systemPrompt}, #{createSource}, #{createType}, #{creatorId})
+  </insert>
+
+  <delete id="deleteByUserId">
+    DELETE FROM ai_user WHERE ai_user_id = #{aiUserId}
+  </delete>
+
+  <select id="selectByAiUserIds" resultMap="AiUserMap">
+    SELECT * FROM ai_user WHERE ai_user_id in
+    <foreach collection="aiUserIds" item="id" open="(" close=")" separator=",">
+      #{id}
+    </foreach>
+  </select>
+
+  <select id="selectByAiUserId" resultMap="AiUserMap">
+    SELECT * FROM ai_user WHERE ai_user_id = #{aiUserId}
+  </select>
+
+
+
+  <select id="pageQuery" resultMap="AiUserMap">
+    SELECT * FROM ai_user
+    <where>
+      <if test="open != null">
+        AND `open` = #{open}
+      </if>
+      <if test="createSource != null">
+        AND `create_source` = #{createSource}
+      </if>
+    </where>
+    ORDER BY updated_time DESC
+    LIMIT #{limit} OFFSET #{offset}
+  </select>
+
+  <select id="queryAllByType" resultMap="AiUserMap">
+    SELECT * FROM ai_user
+    <where>
+      <if test="open != null">
+        AND `open` = #{open}
+      </if>
+      <if test="createSource != null">
+        AND `create_source` = #{createSource}
+      </if>
+      <if test="createType != null">
+        AND `create_type` = #{createType}
+      </if>
+    </where>
+    ORDER BY updated_time DESC
+    LIMIT #{limit}
+  </select>
+
+  <select id="queryByCreator" resultMap="AiUserMap">
+    SELECT * FROM ai_user WHERE creator_id = #{creatorId} order by updated_time DESC
+  </select>
+
+
+
+  <select id="count" resultType="int">
+    SELECT COUNT(1) FROM ai_user
+    <where>
+      <if test="open != null">
+        AND `open` = #{open}
+      </if>
+      <if test="createSource != null">
+        AND `create_source` = #{createSource}
+      </if>
+    </where>
+  </select>
+
+  <select id="countByCreatorId" resultType="int">
+    SELECT COUNT(1) FROM ai_user where creator_id = #{creatorId}
+  </select>
+
+  <update id="updateByAiUserId" parameterType="com.rcloud.server.sealtalk.entity.AiUser">
+    UPDATE ai_user
+    <set>
+      <if test="templateId != null">template_id = #{templateId},</if>
+      <if test="avatar != null">avatar = #{avatar},</if>
+      <if test="gender != null">gender = #{gender},</if>
+      <if test="age != null">age = #{age},</if>
+      <if test="open != null">`open` = #{open},</if>
+      <if test="systemPrompt != null">system_prompt = #{systemPrompt},</if>
+    </set>
+    WHERE ai_user_id = #{aiUserId}
+  </update>
+
+</mapper>
+
+

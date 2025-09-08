@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rcloud.server.sealtalk.dao.ScreenStatusesMapper">
+  <resultMap id="BaseResultMap" type="com.rcloud.server.sealtalk.entity.ScreenStatuses">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="id" jdbcType="INTEGER" property="id" />
+    <result column="operateId" jdbcType="CHAR" property="operateId" />
+    <result column="conversationType" jdbcType="INTEGER" property="conversationType" />
+    <result column="status" jdbcType="INTEGER" property="status" />
+    <result column="createdAt" jdbcType="TIMESTAMP" property="createdAt" />
+    <result column="updatedAt" jdbcType="TIMESTAMP" property="updatedAt" />
+  </resultMap>
+
+  <insert id="upsert" parameterType="com.rcloud.server.sealtalk.entity.ScreenStatuses" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO screen_statuses (operateId, conversationType, status, createdAt, updatedAt) VALUES (#{operateId}, #{conversationType}, #{status}, now(), now()) ON DUPLICATE KEY UPDATE conversationType = VALUES(conversationType), status = VALUES(status), updatedAt = now()
+  </insert>
+
+  <select id="selectByOperateIdAndConversationType" resultMap="BaseResultMap">
+    SELECT * FROM screen_statuses WHERE operateId = #{operateId} AND conversationType = #{conversationType}
+  </select>
+</mapper>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.rcloud.server.sealtalk.dao.UltraGroupMapper">
+  <resultMap id="BaseResultMap" type="com.rcloud.server.sealtalk.entity.UltraGroup">
+    <!--
+      WARNING - @mbg.generated
+    -->
+    <id column="id" jdbcType="INTEGER" property="id" />
+    <result column="name" jdbcType="VARCHAR" property="name" />
+    <result column="portraitUri" jdbcType="VARCHAR" property="portraitUri" />
+    <result column="summary" jdbcType="VARCHAR" property="summary" />
+    <result column="memberCount" jdbcType="INTEGER" property="memberCount" />
+    <result column="creatorId" jdbcType="INTEGER" property="creatorId" />
+    <result column="createdAt" jdbcType="TIMESTAMP" property="createdAt" />
+    <result column="updatedAt" jdbcType="TIMESTAMP" property="updatedAt" />
+  </resultMap>
+
+  <insert id="insert" parameterType="com.rcloud.server.sealtalk.entity.UltraGroup" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO ultra_group (name, portraitUri, creatorId, summary, memberCount, createdAt, updatedAt) VALUES (#{name}, #{portraitUri}, #{creatorId}, #{summary}, #{memberCount}, now(), now())
+  </insert>
+
+  <select id="selectByPrimaryKey" resultMap="BaseResultMap">
+    SELECT * FROM ultra_group WHERE id = #{id}
+  </select>
+
+  <delete id="deleteByPrimaryKey">
+    DELETE FROM ultra_group WHERE id = #{id}
+  </delete>
+</mapper>
