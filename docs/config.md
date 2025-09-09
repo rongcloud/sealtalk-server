@@ -103,3 +103,11 @@
 ]
 
 ```
+
+
+##  [docker-compose.yml](../docker-compose.yml) 配置说明
+
+
+sealtalk-mysql : 服务依赖的mysql容器
+sealtalk-server: sealtalk-server容器，其中明确标注必填项的需要填写，其他的都可以是默认值，也可以按照自己的需求进行修改，配置含义同sealtalk-config.yml中相同字段的含义。
+sealtalk-admin : 融云提供的一个管理后台的容器，目前只有ai角色及基础配置相关的功能，如无需要可以不使用此容器。
