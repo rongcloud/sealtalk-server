@@ -1,0 +1,56 @@
+version: "3.8"
+
+services:
+  sealtalk-mysql:
+    container_name: sealtalk-mysql
+    image: mysql:8.0
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD=123456
+  sealtalk-server:
+    container_name: sealtalk-server
+    image: sealtalk-open-server:1.1
+    environment:
+      - CONFIG_ENV=dev
+      - AUTH_COOKIE_NAME=st_cookie
+      - AUTH_COOKIE_KEY=aaaa
+      - AUTH_COOKIE_MAX_AGE=8640000
+      - AUTH_COOKIE_DOMAIN=
+      - RONGCLOUD_APP_KEY=融云AppKey必填项
+      - RONGCLOUD_APP_SECRET=融云AppSecret必填项
+      - RONGCLOUD_API_URL=融云Api地址必填项
+      - AI_API_URL=
+      - RONGCLOUD_DEFAULT_PORTRAIT_URL=https://test.com/xxx.jpg
+      - QINIU_ACCESS_KEY=
+      - QINIU_SECRET_KEY=
+      - QINIU_BUCKET_NAME=
+      - QINIU_BUCKET_DOMAIN=
+      - ALI_SMS_ACCESS_KEY_ID=
+      - ALI_SMS_ACCESS_KEY_SECRET=
+      - SMS_LIMITED_TIME=1
+      - SMS_LIMITED_COUNT=100
+      - SHUMEI_ACCESS_KEY=
+      - SHUMEI_APP_ID=
+      - SHUMEI_API_URL=
+      - N3D_KEY=1a2b3c4d
+      - CORS_HOSTS='*'
+      - SERVER_PORT=8080
+      - DB_NAME=sealtalk
+      - DB_USER=root
+      - DB_PASSWORD=123456
+      - DB_HOST=sealtalk-mysql
+      - DB_PORT=3306
+      - AI_AGENT_MODEL=
+      - ADMIN_AUTH_KEY=
+      - TZ=Asia/Shanghai
+    ports:
+      - 8080:8080
+    depends_on:
+      - sealtalk-mysql
+    restart: always
+  sealtalk-admin:
+    container_name: sealtalk-admin
+    image: sealtalk-admin:1.0
+    restart: always
+    ports:
+      - 8081:80
