@@ -23,7 +23,7 @@
   </resultMap>
 
   <insert id="insertSelective" parameterType="com.rcloud.server.sealtalk.entity.Groups" useGeneratedKeys="true" keyProperty="id">
-    insert into groups
+    insert into `groups`
     <trim prefix="(" suffix=")" suffixOverrides=",">
       <if test="name != null">name,</if>
       <if test="portraitUri != null">portraitUri,</if>
@@ -43,18 +43,18 @@
   </insert>
 
   <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
-    select * from groups where id = #{id}
+    select * from `groups` where id = #{id}
   </select>
 
     <select id="selectByIds" resultMap="BaseResultMap">
-        SELECT * FROM groups WHERE id IN
+        SELECT * FROM `groups` WHERE id IN
         <foreach collection="ids" item="id" open="(" separator="," close=")">
             #{id}
         </foreach>
     </select>
 
     <update id="updateByPrimaryKeySelective" parameterType="com.rcloud.server.sealtalk.entity.Groups">
-        UPDATE groups
+        UPDATE `groups`
         <set>
             <if test="name != null">name = #{name},</if>
             <if test="portraitUri != null">portraitUri = #{portraitUri},</if>
@@ -74,6 +74,6 @@
     </update>
 
     <delete id="deleteByPrimaryKey">
-        DELETE FROM groups WHERE id = #{id}
+        DELETE FROM `groups` WHERE id = #{id}
     </delete>
 </mapper>
