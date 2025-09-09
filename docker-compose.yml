@@ -9,7 +9,7 @@ services:
       - MYSQL_ROOT_PASSWORD=123456
   sealtalk-server:
     container_name: sealtalk-server
-    image: sealtalk-open-server:1.1
+    image: rongcloud/sealtalk-server:2.0.0
     environment:
       - CONFIG_ENV=dev
       - AUTH_COOKIE_NAME=st_cookie
@@ -50,7 +50,7 @@ services:
     restart: always
   sealtalk-admin:
     container_name: sealtalk-admin
-    image: sealtalk-admin:1.0
+    image: rongcloud/sealtalk-admin:1.0.0
     restart: always
     ports:
       - 8081:80
