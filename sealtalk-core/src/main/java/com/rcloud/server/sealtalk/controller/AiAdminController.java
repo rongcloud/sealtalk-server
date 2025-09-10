@@ -15,6 +15,7 @@ import com.rcloud.server.sealtalk.model.dto.ai.TemplateCreateReq;
 import com.rcloud.server.sealtalk.model.dto.ai.TemplateUpdateReq;
 import com.rcloud.server.sealtalk.util.N3d;
 import com.rcloud.server.sealtalk.util.ValidateUtils;
+import io.rong.models.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -167,6 +168,13 @@ public class AiAdminController extends BaseController {
     public APIResult<Void> deleteAvatar(@PathVariable("avatarId") Long avatarId) {
         urlStoreService.delUrlById(avatarId);
         return APIResultWrap.ok();
+    }
+
+
+    @PostMapping("/update/default/agent")
+    public APIResult<Void> updateDefaultAgent(@RequestBody AiUserCreateReq req) throws Exception {
+        Result result = aiUserService.updateSuggestAgent(req.getSystemPrompt());
+        return APIResultWrap.error(result.getCode(), result.getErrorMessage());
     }
 
 }

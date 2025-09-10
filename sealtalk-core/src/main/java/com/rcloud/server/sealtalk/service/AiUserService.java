@@ -523,6 +523,12 @@ public class AiUserService {
     }
 
 
+    public Result updateSuggestAgent(String systemPrompt) throws Exception {
+        AiUser aiUser = new AiUser();
+        aiUser.setAiUserId(Constants.SUGGESTION_AGENT_ID);
+        return rongCloudClient.updateAgent(aiUser, new AiUserI18n(), null, systemPrompt);
+    }
+
 }
 
 
