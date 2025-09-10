@@ -490,6 +490,8 @@ public class GroupController extends BaseController {
         ValidateUtils.notBlank(groupParam.getMemberId(), "memberId");
         //更新GroupMember 信息
         GroupMembers newGroupMembers = new GroupMembers();
+        newGroupMembers.setGroupId(N3d.decode(groupParam.getGroupId()));
+        newGroupMembers.setMemberId(N3d.decode(groupParam.getMemberId()));
         newGroupMembers.setGroupNickname(groupParam.getGroupNickname());
         newGroupMembers.setDisplayName(groupParam.getGroupNickname());
         newGroupMembers.setRegion(groupParam.getRegion());
