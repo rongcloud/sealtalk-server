@@ -216,7 +216,7 @@ public class GroupController extends BaseController {
             ValidateUtils.valueOf(groupParam.getClearStatus(), List.of(0, 3, 7, 36),"clearStatus");
         }
         if (groupParam.getMemberProtection()!= null){
-            ValidateUtils.check_boolean_num(groupParam.getCertiStatus(), "memberProtection");
+            ValidateUtils.check_boolean_num(groupParam.getMemberProtection(), "memberProtection");
         }
         Groups updateGroup = new Groups();
         updateGroup.setId(N3d.decode(groupId));
