@@ -560,7 +560,7 @@ public class GroupsService {
             throw ParamException.buildError(ErrorCode.PARAM_ERROR.getErrorCode(), ErrorMsg.NOT_EXIST, "group");
         }
         GroupMembers groupMember = groupMembersMapper.queryGroupMembersWithGroupByGroupIdAndMemberId(updateGroups.getId(), userId);
-        if (groupMember == null || isManagerRole(groupMember.getRole())) {
+        if (groupMember == null || !isManagerRole(groupMember.getRole())) {
             throw new ServiceException(ErrorCode.SERVICE_ERROR.getErrorCode(), ErrorMsg.ONLY_GROUP_MANAGER);
         }
 
