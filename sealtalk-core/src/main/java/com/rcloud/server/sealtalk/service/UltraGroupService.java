@@ -224,7 +224,7 @@ public class UltraGroupService {
     public void quitUltraGroup(Integer currentUserId, Integer groupId) throws ServiceException {
         UltraGroup ultraGroup = checkExistUg(groupId);
 
-        checkCreator(currentUserId, ultraGroup);
+        checkExistMember(groupId, currentUserId);
 
         ultraGroupMembersMapper.deleteByUltraGroupIdAndMemberIds(groupId, List.of(currentUserId));
         ugUserGroupMemberMapper.deleteByMemberIds(List.of(currentUserId));
