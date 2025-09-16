@@ -18,6 +18,7 @@ import com.rcloud.server.sealtalk.exception.ServiceException;
 import com.rcloud.server.sealtalk.model.dto.PicCodeDTO;
 import com.rcloud.server.sealtalk.sms.SmsService;
 import com.rcloud.server.sealtalk.sms.SmsTemplateVO;
+import com.rcloud.server.sealtalk.util.JacksonUtil;
 import com.rcloud.server.sealtalk.util.MiscUtils;
 import com.rcloud.server.sealtalk.util.RandomUtil;
 import com.wf.captcha.SpecCaptcha;
@@ -80,6 +81,7 @@ public class VerificationCodeService implements InitializingBean {
         String jsonData = IOUtils.toString(smsTemplateResource.getInputStream(), StandardCharsets.UTF_8);
         ObjectMapper objectMapper = new ObjectMapper();
         List<SmsTemplateVO> smsTemplateVOList = objectMapper.readValue(jsonData, new TypeReference<List<SmsTemplateVO>>() {});
+        log.info("INIT SMS TEMPLATE: {}", JacksonUtil.toJson(smsTemplateVOList));
         Map<String, SmsService> nameMap = applicationContext.getBeansOfType(SmsService.class)
                 .values()
                 .stream()

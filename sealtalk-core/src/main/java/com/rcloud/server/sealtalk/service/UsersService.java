@@ -131,6 +131,10 @@ public class UsersService {
         return  usersMapper.selectByRegionAndPhone(region,phone);
     }
 
+    public List<Users> queryUserByPhone(String phone) {
+        return usersMapper.selectByPhones(List.of(phone));
+    }
+
     /**
      * 根据stAccount查询用户信息
      */

@@ -12,6 +12,7 @@ public class UserDTO {
     private String portraitUri;
     private String gender;
     private String stAccount;
+    private Integer block;
 
 
 

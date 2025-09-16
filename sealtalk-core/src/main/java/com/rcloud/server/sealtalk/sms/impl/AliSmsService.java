@@ -13,6 +13,7 @@ import java.util.Map;
 
 import com.rcloud.server.sealtalk.util.JacksonUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -27,8 +28,8 @@ public class AliSmsService implements SmsService {
     @Override
     public String sendSms(String region, String phone, SmsTemplateVO template) throws Exception {
         Config config = new Config();
-        config.setAccessKeyId(sealtalkConfig.getAliSmsAccessKeyId());
-        config.setAccessKeySecret(sealtalkConfig.getAliSmsAccessKeySecret());
+        config.setAccessKeyId(StringUtils.isBlank(template.getKeyId()) ? sealtalkConfig.getAliSmsAccessKeyId() : template.getKeyId());
+        config.setAccessKeySecret(StringUtils.isBlank(template.getKeySecret()) ? sealtalkConfig.getAliSmsAccessKeySecret() : template.getKeySecret());
         String code = String.valueOf(code());
         Map<String, String> param = new HashMap<>();
         param.put("p1", code);

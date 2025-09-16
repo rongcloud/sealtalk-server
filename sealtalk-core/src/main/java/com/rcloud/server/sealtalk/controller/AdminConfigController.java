@@ -8,9 +8,11 @@ import com.rcloud.server.sealtalk.constant.WhiteListTypeEnum;
 import com.rcloud.server.sealtalk.dto.BlockStatusParam;
 import com.rcloud.server.sealtalk.dto.ConfigDTO;
 import com.rcloud.server.sealtalk.dto.RiskWhiteListParam;
+import com.rcloud.server.sealtalk.entity.Users;
 import com.rcloud.server.sealtalk.entity.WhiteList;
 import com.rcloud.server.sealtalk.exception.ParamException;
 import com.rcloud.server.sealtalk.interceptor.IpInterceptor;
+import com.rcloud.server.sealtalk.model.dto.UserDTO;
 import com.rcloud.server.sealtalk.model.response.APIResult;
 import com.rcloud.server.sealtalk.model.response.APIResultWrap;
 import com.rcloud.server.sealtalk.service.ConfigService;
@@ -19,6 +21,8 @@ import com.rcloud.server.sealtalk.service.WhiteListService;
 import com.rcloud.server.sealtalk.util.N3d;
 import com.rcloud.server.sealtalk.util.ValidateUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.ibatis.annotations.Param;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,6 +35,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/admin/config")
@@ -143,4 +148,40 @@ public class AdminConfigController {
     }
 
 
+    @GetMapping(value = "/userinfo")
+    public APIResult<List<UserDTO>> userInfo(@RequestParam(value = "id", required = false) String id,
+                                             @RequestParam(value = "phone", required = false) String phone) throws Exception {
+
+        List<UserDTO> result = new ArrayList<>();
+        if (StringUtils.isNotBlank(id)) {
+            Integer userId = id.matches("\\d+") ? Integer.parseInt(id) : N3d.decode(id);
+            Users u = usersService.queryById(userId);
+            if (u != null) {
+                result.add(userDTO(u));
+            }
+        }
+        if (StringUtils.isNotBlank(phone)) {
+            List<Users> us = usersService.queryUserByPhone(phone);
+            if (us != null) {
+                for (Users u : us) {
+                    result.add(userDTO(u));
+                }
+            }
+        }
+        return APIResultWrap.ok(new ArrayList<>(result.stream().collect(Collectors.toMap(UserDTO::getId, v -> v, (v1, v2) -> v2)).values()));
+    }
+
+
+    private UserDTO userDTO(Users u) throws Exception {
+        var dto = new UserDTO();
+        dto.setId(N3d.encode(u.getId()));
+        dto.setNickname(u.getNickname());
+        dto.setRegion(u.getRegion());
+        dto.setPhone(u.getPhone());
+        dto.setPortraitUri(u.getPortraitUri());
+        dto.setGender(u.getGender());
+        dto.setStAccount(u.getStAccount());
+        dto.setBlock(u.getBlockStatus());
+        return dto;
+    }
 }

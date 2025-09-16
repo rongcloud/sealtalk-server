@@ -1,0 +1,1 @@
+ALTER TABLE `ai_user` MODIFY COLUMN `system_prompt` TEXT NOT NULL COMMENT '系统提示词';

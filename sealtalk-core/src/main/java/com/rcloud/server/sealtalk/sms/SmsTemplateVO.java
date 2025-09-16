@@ -10,4 +10,6 @@ public class SmsTemplateVO {
     private String service;
     private String url;
     private String signName;
+    private String keyId;
+    private String keySecret;
 }
