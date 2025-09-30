@@ -92,8 +92,8 @@ public class UserController extends BaseController {
         region = MiscUtils.removeRegionPrefix(region);
         ValidateUtils.checkNumberStr(region,"region");
         ValidateUtils.checkNumberStr(phone,"phone");
-//        ValidateUtils.notBlank(userParam.getPicCode(),"smdCode");
-//        ValidateUtils.notBlank(userParam.getPicCodeId(),"smdCode");
+        ValidateUtils.notBlank(userParam.getPicCode(),"smdCode");
+        ValidateUtils.notBlank(userParam.getPicCodeId(),"smdCode");
 
         //验证图片验证码
         if (!verificationCodeService.verifyPicCode(userParam.getPicCodeId(),userParam.getPicCode())){
