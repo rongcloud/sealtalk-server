@@ -136,9 +136,9 @@ public class VerificationCodeService implements InitializingBean {
      * 验证图片验证码
      */
     public boolean verifyPicCode(String picCodeId, String code) {
-//        if (StringUtils.isBlank(picCodeId) || StringUtils.isBlank(code)) {
-//            return true;
-//        }
+        if (StringUtils.isBlank(picCodeId) || StringUtils.isBlank(code)) {
+            return true;
+        }
         String codeValue = PIC_CODE_CACHE.getIfPresent(picCodeId);
         PIC_CODE_CACHE.invalidate(picCodeId);
         return codeValue != null && codeValue.equalsIgnoreCase(code);
