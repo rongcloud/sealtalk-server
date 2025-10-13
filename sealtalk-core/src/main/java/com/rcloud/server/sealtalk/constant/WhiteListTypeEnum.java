@@ -14,9 +14,14 @@ public enum WhiteListTypeEnum {
     LOGIN_RISK_VERIFY(2),
 
     /**
-     *
+     * ip黑名单
      */
     BLOCK_IP(3),
+
+    /**
+     * 短信地区黑名单
+     */
+    SMS_BLOCK_REGION(4),
 
     ;
     private final int type;

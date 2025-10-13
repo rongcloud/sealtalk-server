@@ -21,6 +21,7 @@ import com.rcloud.server.sealtalk.sms.SmsTemplateVO;
 import com.rcloud.server.sealtalk.util.JacksonUtil;
 import com.rcloud.server.sealtalk.util.MiscUtils;
 import com.rcloud.server.sealtalk.util.RandomUtil;
+import com.wf.captcha.ArithmeticCaptcha;
 import com.wf.captcha.SpecCaptcha;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
@@ -33,6 +34,8 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 
+import java.awt.*;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
@@ -119,15 +122,14 @@ public class VerificationCodeService implements InitializingBean {
      */
     public PicCodeDTO pictureCode() {
         String picCodeId = RandomUtil.uuid();
-        SpecCaptcha captcha = new SpecCaptcha();
-        captcha.setLen(4);
-        String picCode = captcha.text();
-        String picBase64 = captcha.toBase64("");
-        log.info("picture picCodeId:{}, code:{}", picCodeId, picCode);
-        PIC_CODE_CACHE.put(picCodeId, picCode);
+        ArithmeticCaptcha arithmeticCaptcha = new ArithmeticCaptcha(130,48,3);
+        String captcha = arithmeticCaptcha.text().toLowerCase();
+        String base64 = arithmeticCaptcha.toBase64("");
+        log.info("picture picCodeId:{}, code:{}", picCodeId, captcha);
+        PIC_CODE_CACHE.put(picCodeId, captcha);
         PicCodeDTO dto = new PicCodeDTO();
         dto.setPicCodeId(picCodeId);
-        dto.setPicCode(picBase64);
+        dto.setPicCode(base64);
         return dto;
     }
 
@@ -154,6 +156,10 @@ public class VerificationCodeService implements InitializingBean {
             return;
         }
         region = MiscUtils.removeRegionPrefix(region);
+
+        if (whiteList.whiteCheck(region,"0",WhiteListTypeEnum.SMS_BLOCK_REGION)){
+            throw new ServiceException(ErrorCode.PARAM_ERROR.getErrorCode(), "region blocked.");
+        }
 
         //检查并更新发送频率
         checkAndUpdateRateLimit(region, phone, ip);

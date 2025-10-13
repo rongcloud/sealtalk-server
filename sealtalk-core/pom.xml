@@ -23,6 +23,7 @@
     <caffeine.version>3.2.2</caffeine.version>
     <easy.captcha.version>1.6.2</easy.captcha.version>
     <ali.sms.version>4.1.2</ali.sms.version>
+    <nashorn.version>15.4</nashorn.version>
     <maven.build.timestamp.format>yyyyMMddHHmmss</maven.build.timestamp.format>
   </properties>
 
@@ -110,6 +111,12 @@
       <groupId>com.github.whvcse</groupId>
       <artifactId>easy-captcha</artifactId>
       <version>${easy.captcha.version}</version>
+    </dependency>
+    <!-- Nashorn JavaScript 引擎，用于 Java 15+ 版本支持 ArithmeticCaptcha -->
+    <dependency>
+      <groupId>org.openjdk.nashorn</groupId>
+      <artifactId>nashorn-core</artifactId>
+      <version>${nashorn.version}</version>
     </dependency>
     <dependency>
       <groupId>com.aliyun</groupId>
