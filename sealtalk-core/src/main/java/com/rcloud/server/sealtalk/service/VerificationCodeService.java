@@ -122,14 +122,15 @@ public class VerificationCodeService implements InitializingBean {
      */
     public PicCodeDTO pictureCode() {
         String picCodeId = RandomUtil.uuid();
-        ArithmeticCaptcha arithmeticCaptcha = new ArithmeticCaptcha(130,48,3);
-        String captcha = arithmeticCaptcha.text().toLowerCase();
-        String base64 = arithmeticCaptcha.toBase64("");
-        log.info("picture picCodeId:{}, code:{}", picCodeId, captcha);
-        PIC_CODE_CACHE.put(picCodeId, captcha);
+        SpecCaptcha captcha = new SpecCaptcha();
+        captcha.setLen(4);
+        String picCode = captcha.text();
+        String picBase64 = captcha.toBase64("");
+        log.info("picture picCodeId:{}, code:{}", picCodeId, picCode);
+        PIC_CODE_CACHE.put(picCodeId, picCode);
         PicCodeDTO dto = new PicCodeDTO();
         dto.setPicCodeId(picCodeId);
-        dto.setPicCode(base64);
+        dto.setPicCode(picBase64);
         return dto;
     }
 
