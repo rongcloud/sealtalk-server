@@ -24,6 +24,8 @@ public class Constants {
     public static final int MAX_USER_GROUP_OWN_COUNT = 500;
     public static final int MAX_USER_ULTRA_GROUP_OWN_COUNT = 20;
     public static final int MAX_USER_ULTRA_GROUP_CHANNEL_OWN_COUNT = 20;
+    public static final int MAX_GROUP_MANAGER_CNT = 10;
+
     /**
      * 超级群下用户组最大数量
      */

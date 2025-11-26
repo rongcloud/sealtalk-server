@@ -76,4 +76,8 @@
     <delete id="deleteByPrimaryKey">
         DELETE FROM `groups` WHERE id = #{id}
     </delete>
+
+    <select id="scanById" resultMap="BaseResultMap">
+        select * from `groups` where id > #{id} order by id limit #{limit}
+    </select>
 </mapper>

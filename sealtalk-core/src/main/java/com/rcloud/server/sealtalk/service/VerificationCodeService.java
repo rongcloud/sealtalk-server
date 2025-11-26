@@ -193,6 +193,10 @@ public class VerificationCodeService implements InitializingBean {
         if (Constants.ENV_DEV.equals(sealtalkConfig.getConfigEnv()) && Constants.DEFAULT_VERIFY_CODE.equals(code)) {
             return true;
         }
+        if (whiteList.whiteCheck(region, phone, WhiteListTypeEnum.SMS)) {
+            return true;
+        }
+
         var verificationCodes = verificationCodesMapper.selectByRegionAndPhone(region, phone);
         //判断验证码记录是否存在
         if (verificationCodes == null) {

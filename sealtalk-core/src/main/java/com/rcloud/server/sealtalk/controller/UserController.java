@@ -150,11 +150,10 @@ public class UserController extends BaseController {
     /**
      * 设置昵称/头像/SealTalk Account/性别/隐私设置
      */
-    @PostMapping(value = {"/updateUser", "/set_nickname", "/set_portrait_uri", "/set_st_account", "/set_gender", "/set_privacy", "/set_poke"})
+    @PostMapping(value = {"/updateUser", "/set_nickname", "/set_portrait_uri", "/set_gender", "/set_privacy", "/set_poke"})
     public APIResult<Object> updateUser(@RequestBody UserParam userParam) throws Exception {
         String nickname = MiscUtils.xss_null(userParam.getNickname(), ValidateUtils.NICKNAME_MAX_LENGTH);
         String portraitUri = MiscUtils.xss_null(userParam.getPortraitUri(), ValidateUtils.PORTRAIT_URI_MAX_LENGTH);
-        ValidateUtils.checkStAccount(userParam.getStAccount(),"stAccount");
         ValidateUtils.checkGender(userParam.getGender(),"gender");
         ValidateUtils.checkBooleanNum(userParam.getPhoneVerify(),"phoneVerify",false);
         ValidateUtils.checkBooleanNum(userParam.getStSearchVerify(),"stSearchVerify",false);
@@ -167,7 +166,6 @@ public class UserController extends BaseController {
         updateUser.setNickname(nickname);
         updateUser.setPortraitUri(portraitUri);
         updateUser.setGender(userParam.getGender());
-        updateUser.setStAccount(userParam.getStAccount());
         updateUser.setPhoneVerify(userParam.getPhoneVerify());
         updateUser.setStSearchVerify(userParam.getStSearchVerify());
         updateUser.setFriVerify(userParam.getFriVerify());

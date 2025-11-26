@@ -15,4 +15,8 @@ public interface UsersMapper {
     int insertSelective(Users record);
     int updateByPrimaryKeySelective(Users record);
     List<Users> selectByPhones(@Param("phones") List<String> phones);
+    int updateStAccountById(@Param("id") Integer id, @Param("stAccount") String stAccount);
+
+    List<Users> scanById(@Param("id")Integer id, @Param("limit") int limit);
+
 }

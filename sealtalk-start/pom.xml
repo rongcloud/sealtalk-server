@@ -13,7 +13,7 @@
 
   <properties>
     <build.path>${basedir}/../build</build.path>
-    <maven.build.timestamp.format>yyyyMMddHH</maven.build.timestamp.format>
+    <maven.build.timestamp.format>yyyyMMddHHmmss</maven.build.timestamp.format>
   </properties>
 
   <dependencies>

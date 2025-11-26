@@ -96,7 +96,6 @@
       <if test="portraitUri != null">portraitUri = #{portraitUri},</if>
       <if test="rongCloudToken != null">rongCloudToken = #{rongCloudToken},</if>
       <if test="gender != null">gender = #{gender},</if>
-      <if test="stAccount != null">stAccount = #{stAccount},</if>
       <if test="phoneVerify != null">phoneVerify = #{phoneVerify},</if>
       <if test="stSearchVerify != null">stSearchVerify = #{stSearchVerify},</if>
       <if test="friVerify != null">friVerify = #{friVerify},</if>
@@ -117,5 +116,13 @@
     <foreach collection="phones" item="phone" open="(" separator="," close=")">
       #{phone}
     </foreach>
+  </select>
+
+  <update id="updateStAccountById">
+    update users set updatedAt = NOW() , stAccount= #{stAccount} where id = #{id}
+  </update>
+
+  <select id="scanById" resultMap="BaseResultMap">
+    select * from users where id > #{id} order by id limit #{limit}
   </select>
 </mapper>

@@ -123,5 +123,8 @@
     delete from friendships where userId=#{userId} or friendId=#{userId}
   </delete>
 
+    <select id="scanById" resultMap="BaseResultMap">
+        select * from friendships where id > #{id} order by id limit #{limit}
+    </select>
 
 </mapper>

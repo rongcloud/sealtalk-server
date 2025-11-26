@@ -5,7 +5,9 @@ import com.rcloud.server.sealtalk.dto.CallbackParam;
 import com.rcloud.server.sealtalk.exception.ServiceException;
 import com.rcloud.server.sealtalk.model.response.APIResult;
 import com.rcloud.server.sealtalk.model.response.APIResultWrap;
+import com.rcloud.server.sealtalk.param.FriendRouteParam;
 import com.rcloud.server.sealtalk.param.MsgRouteParam;
+import com.rcloud.server.sealtalk.param.UserProfileRouteParam;
 import com.rcloud.server.sealtalk.service.MsgCallbackService;
 import com.rcloud.server.sealtalk.util.ThreadFactoryUtil;
 import jakarta.servlet.http.HttpServletRequest;
@@ -52,4 +54,29 @@ public class MessageController {
             response.getWriter().write("ok");
         }
     }
+
+
+    @UnLogAspect
+    @PostMapping("/sync/profile/user")
+    public void syncUserProfile(@RequestBody UserProfileRouteParam param, HttpServletResponse response) throws IOException {
+        try {
+            ThreadFactoryUtil.ofVirtual(() -> msgCallbackService.userInfoUpdate(param));
+        } finally {
+            response.setStatus(HttpServletResponse.SC_OK);
+            response.getWriter().write("ok");
+        }
+    }
+
+    @UnLogAspect
+    @PostMapping("/sync/profile/friend")
+    public void syncFriend(@RequestBody FriendRouteParam param, HttpServletResponse response) throws IOException {
+        try {
+            ThreadFactoryUtil.ofVirtual(() -> msgCallbackService.friendRoute(param));
+        } finally {
+            response.setStatus(HttpServletResponse.SC_OK);
+            response.getWriter().write("ok");
+        }
+    }
+
+
 }

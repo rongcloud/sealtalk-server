@@ -34,6 +34,7 @@ import com.rcloud.server.sealtalk.model.JwtTokenResult;
 import com.rcloud.server.sealtalk.rongcloud.RongCloudClient;
 import com.rcloud.server.sealtalk.util.JacksonUtil;
 import com.rcloud.server.sealtalk.util.N3d;
+import com.rcloud.server.sealtalk.util.TimeUtil;
 import io.rong.models.response.TokenResult;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -52,6 +53,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -158,6 +160,10 @@ public class UsersService {
             u.setUpdatedAt(new Date());
             u.setPortraitUri(sealtalkConfig.getRongcloudDefaultPortraitUrl());
             usersMapper.insertSelective(u);
+            String stAccount = userStAccount(u.getCreatedAt().getTime(), u.getId());
+            u.setStAccount(stAccount);
+            usersMapper.updateStAccountById(u.getId(), stAccount);
+
             String userIdStr = N3d.encode(u.getId());
             Thread.ofVirtual().start(() -> botService.sendOpenMsg(userIdStr));
             Thread.ofVirtual().start(() -> {
@@ -194,6 +200,16 @@ public class UsersService {
         if (!Constants.CODE_OK.equals(tokenResult.getCode())) {
             throw new ServiceException(ErrorCode.CALL_RC_SERVER_ERROR.getErrorCode(), "token error");
         }
+        // 异步延迟更新用户唯一标识
+        if (StringUtils.isNotBlank(u.getStAccount())){
+            CompletableFuture.runAsync(() -> {
+                try {
+                    rongCloudClient.updateUserUniqueId(userIdStr, u.getStAccount());
+                } catch (Throwable e) {
+                    log.error("userId:{} ", userId, e);
+                }
+            }, CompletableFuture.delayedExecutor(2, TimeUnit.SECONDS));
+        }
         //更新token到本地
         String token = tokenResult.getToken();
         Users updateUser = new Users();
@@ -204,28 +220,22 @@ public class UsersService {
     }
 
 
+    public void updateUserInfo(Users updateUser) throws Exception {
+        updateUserInfo(updateUser, true);
+    }
 
     /**
      * 更新用户信息
      */
-    public void updateUserInfo(Users updateUser) throws Exception{
+    public void updateUserInfo(Users updateUser , boolean syncRc) throws Exception{
         Integer userId = updateUser.getId();
-        String userIdStr = N3d.encode(updateUser.getId());
-        var u = queryById(updateUser.getId());
-
-        //更新头像/昵称需要调用融云更新
-        if (StringUtils.isNotBlank(updateUser.getPortraitUri()) || StringUtils.isNotBlank(updateUser.getNickname())) {
+        if (syncRc && (StringUtils.isNotBlank(updateUser.getPortraitUri()) || StringUtils.isNotBlank(updateUser.getNickname()))) {
+            String userIdStr = N3d.encode(updateUser.getId());
+            var u = queryById(updateUser.getId());
             var nickName = StringUtils.isBlank(updateUser.getNickname()) ? u.getNickname() : updateUser.getNickname();
             var portraitUri = StringUtils.isBlank(updateUser.getPortraitUri()) ? u.getPortraitUri() : updateUser.getPortraitUri();
             rongCloudClient.updateUser(userIdStr, nickName, portraitUri);
-            NICK_NAME_CACHE.put(String.valueOf(userId),nickName);
-        }
-        //更新SealTalk Account需要校验存在不存在
-        if (StringUtils.isNotBlank(updateUser.getStAccount())){
-            var stUser = queryUserByStAccount(updateUser.getStAccount());
-            if (stUser != null) {
-                throw new ParamException(ErrorCode.PARAM_ERROR.getErrorCode(), "stAccount exist.");
-            }
+            NICK_NAME_CACHE.put(String.valueOf(userId), nickName);
         }
         usersMapper.updateByPrimaryKeySelective(updateUser);
     }
@@ -532,6 +542,12 @@ public class UsersService {
         }
         return nickName;
     }
+
+
+    public String userStAccount(long createTime, long userId) {
+        return "ST" + TimeUtil.format(createTime, "yyyyMMddHHmm") + userId;
+    }
+
 
 
 }

@@ -426,14 +426,14 @@ public class GroupsService {
                 messageData.put("targetGroupName", group.getName());
                 messageData.put("timestamp", System.currentTimeMillis());
                 if (isCreate) {
-                    rongCloudClient.createGroup(N3d.encode(group.getId()), group.getName(), memberIdStrs);
+                    rongCloudClient.createGroup(N3d.encode(group.getId()), group.getName(), N3d.encode(userId), memberIdStrs);
                     Thread.sleep(1000);
                     sendGroupNotificationMessageBySystem(group.getId(), messageData, userId, GroupOperationType.CREATE);
                     return;
                 }
                 messageData.put("targetUserIds", memberIdStrs);
                 //调用融云加入群组
-                rongCloudClient.joinGroup(N3d.encode(group.getId()), group.getName(), memberIdStrs);
+                rongCloudClient.joinGroup(N3d.encode(group.getId()), memberIdStrs);
                 Thread.sleep(1000);
                 sendGroupNotificationMessageBySystem(group.getId(), messageData, userId, GroupOperationType.Add);
             } catch (Exception e) {
@@ -773,6 +773,10 @@ public class GroupsService {
      * 批量设置管理员
      */
     public void batchSetManager(Integer currentUserId, Integer groupId, List<Integer> memberIds) throws Exception {
+        List<Integer> managerIds = queryManagerIds(groupId);
+        if (managerIds.size() + memberIds.size() >= Constants.MAX_GROUP_MANAGER_CNT) {
+            throw ServiceException.buildError(ErrorCode.SERVICE_ERROR.getErrorCode(), ErrorMsg.ONLY_GROUP_CREATOR, "group manager");
+        }
         List<Integer> actualIds = setGroupMemberRole(currentUserId, groupId, memberIds, GroupRole.MANAGER, GroupOperationType.SET_MANAGER);
         if (actualIds.isEmpty()) {
             return;
@@ -807,7 +811,6 @@ public class GroupsService {
      */
     private List<Integer> setGroupMemberRole(Integer userId, Integer groupId, List<Integer> memberIds, GroupRole role, GroupOperationType groupOperationType) throws Exception {
 
-
         if (memberIds.contains(userId)) {
             throw new ServiceException(ErrorCode.SERVICE_ERROR.getErrorCode(), ErrorMsg.MUST_NOT_SELF);
         }
@@ -823,6 +826,15 @@ public class GroupsService {
         }
         groupMembersMapper.updateRoleByGroupIdAndMemberIds(groupId, memberIds, role.getRole());
 
+        List<String> memberIdStrs = MiscUtils.batchEncodeIds(memberIds);
+        String groupIdStr = N3d.encode(groupId);
+
+        if (groupOperationType == GroupOperationType.SET_MANAGER) {
+            ThreadFactoryUtil.ofVirtual(() -> rongCloudClient.addManager(groupIdStr, memberIdStrs));
+        } else if (groupOperationType == GroupOperationType.REMOVE_MANAGER) {
+            ThreadFactoryUtil.ofVirtual(() -> rongCloudClient.removeManager(groupIdStr, memberIdStrs));
+        }
+
         //发送群组通知
         String nickname = usersService.getCurrentUserNickNameWithCache(userId);
         List<Users> users = usersService.queryByIds(memberIds);
@@ -834,10 +846,9 @@ public class GroupsService {
         Map<String, Object> messageData = new HashMap<>();
         messageData.put("operatorId", N3d.encode(userId));
         messageData.put("operatorNickname", nickname);
-        messageData.put("targetUserIds", MiscUtils.batchEncodeIds(memberIds));
+        messageData.put("targetUserIds", memberIdStrs);
         messageData.put("targetUserDisplayNames", targetUserDisplayNames);
         messageData.put("timestamp", System.currentTimeMillis());
-
         //发送群组通知
         sendGroupNotificationMessageBySystem(groupId, messageData, userId, groupOperationType);
 
@@ -875,13 +886,15 @@ public class GroupsService {
             ThreadFactoryUtil.ofVirtual(()-> rongCloudClient.addGroupWhitelist(N3d.encode(groupId), List.of(N3d.encode(targetId))));
         }
         ThreadFactoryUtil.ofVirtual(()->{
+            String newOwner = N3d.encode(targetId);
+            rongCloudClient.groupTransferOwner(N3d.encode(groupId), newOwner);
             String currentUserNickName = usersService.getCurrentUserNickNameWithCache(currentUserId);
             String userNickName = usersService.getCurrentUserNickNameWithCache(targetId);
             //发送群通知
             Map<String, Object> messageData = new HashMap<>();
             messageData.put("operatorId", N3d.encode(currentUserId));
             messageData.put("operatorNickname", currentUserNickName);
-            messageData.put("targetUserIds", List.of(N3d.encode(targetId)));
+            messageData.put("targetUserIds", List.of(newOwner));
             messageData.put("targetUserDisplayNames", ImmutableList.of(userNickName));
             messageData.put("timestamp", System.currentTimeMillis());
             //发送群组通知消息
@@ -908,7 +921,7 @@ public class GroupsService {
             //发送群组通知消息
             sendGroupNotificationMessageBySystem(groupId, messageData, currentUserId, GroupOperationType.DISMISS);
             Thread.sleep(1000);
-            rongCloudClient.dismiss(N3d.encode(currentUserId), N3d.encode(groupId));
+            rongCloudClient.dismiss(N3d.encode(groupId));
         });
         groupsMapper.deleteByPrimaryKey(groupId);
         groupMembersMapper.deleteByGroupId(groupId);
@@ -993,7 +1006,7 @@ public class GroupsService {
         groupFavsMapper.deleteByGroupIdAndUserIds(group.getId(), members);
 
         ThreadFactoryUtil.ofVirtual(()->{
-            rongCloudClient.quitGroup(groupIdStr, group.getName(), memberIdStrs);
+            rongCloudClient.quitGroup(groupIdStr, memberIdStrs);
             Map<String, Object> messageData = new HashMap<>();
             messageData.put("operatorNickname", operatorNickName);
             messageData.put("targetUserIds", targetIdStrs);
@@ -1015,7 +1028,7 @@ public class GroupsService {
                 groupBulletinsMapper.deleteByGroupId(group.getId());
                 groupExitedListsMapper.deleteByGroupId(group.getId());
                 groupFavsMapper.deleteByGroupId(group.getId());
-                rongCloudClient.dismiss(N3d.encode(operatorId), groupIdStr);
+                rongCloudClient.dismiss(groupIdStr);
                 return;
             }
 

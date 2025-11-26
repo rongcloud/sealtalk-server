@@ -18,7 +18,9 @@ import com.rcloud.server.sealtalk.rongcloud.RongCloudClient;
 import com.rcloud.server.sealtalk.rongcloud.message.ContactNotificationMessage;
 import com.rcloud.server.sealtalk.util.MiscUtils;
 import com.rcloud.server.sealtalk.util.N3d;
+import com.rcloud.server.sealtalk.util.ThreadFactoryUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -118,13 +120,20 @@ public class FriendshipsService {
         update2.setFriendId(userId);
         update2.setStatus(FriendShipStatus.DELETED.getStatus());
         friendshipsMapper.updateByUserIdAndFriendIdSelective(update2);
-
+        ThreadFactoryUtil.ofVirtual(() -> rongCloudClient.delFriend(N3d.encode(userId), List.of(N3d.encode(friendId))));
     }
 
     /**
      * 更新好友信息
      */
     public void updateFriendInfo(Friendships friendships){
+        if (StringUtils.isNotBlank(friendships.getDisplayName())){
+            ThreadFactoryUtil.ofVirtual(() ->
+                    rongCloudClient.updateFriendProfile(N3d.encode(friendships.getUserId()),
+                            N3d.encode(friendships.getFriendId()),
+                            friendships.getDisplayName(),
+                            null));
+        }
         friendshipsMapper.updateByUserIdAndFriendIdSelective(friendships);
     }
 
@@ -182,16 +191,26 @@ public class FriendshipsService {
     /**
      * 添加好友
      */
-    private void addFriend(Integer currentUserId, Integer friendId, String message, boolean sendMsg, String operate) throws Exception {
+    private void addFriend(Integer currentUserId, Integer friendId, String message, boolean sendMsg, String operate, boolean syncRc) throws Exception {
         usersService.removeBlackList(currentUserId, friendId);
         usersService.removeBlackList(friendId, currentUserId);
         saveFriendShip(currentUserId, friendId, message, FriendShipStatus.AGREED);
         saveFriendShip(friendId, currentUserId, message, FriendShipStatus.AGREED);
+        if (syncRc){
+            ThreadFactoryUtil.ofVirtual(() -> rongCloudClient.addFriend(N3d.encode(currentUserId), N3d.encode(friendId)));
+        }
         if (sendMsg) {
             sendAddFriendMsg(currentUserId, friendId, message, operate);
         }
     }
 
+    public void addFriend(Integer currentUserId, Integer friendId) throws Exception {
+        addFriend(currentUserId, friendId, "", false, "", false);
+    }
+
+    private void addFriend(Integer currentUserId, Integer friendId, String message, boolean sendMsg, String operate) throws Exception {
+        addFriend(currentUserId, friendId, message, sendMsg, operate, true);
+    }
 
     /**
      * 发送好友申请消息

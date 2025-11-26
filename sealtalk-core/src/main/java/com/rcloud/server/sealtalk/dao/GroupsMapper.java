@@ -15,4 +15,6 @@ public interface GroupsMapper {
     Groups selectByPrimaryKey(@Param("id") Integer id);
 
     List<Groups> selectByIds(@Param("ids") List<Integer> ids);
+
+    List<Groups> scanById(@Param("id") Integer id, @Param("limit") int limit);
 }

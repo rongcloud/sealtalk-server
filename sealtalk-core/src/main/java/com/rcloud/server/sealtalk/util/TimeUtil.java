@@ -9,4 +9,9 @@ public class TimeUtil {
     public static String format(long time) {
         return Instant.ofEpochMilli(time).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
     }
+
+
+    public static String format(long time, String pattern) {
+        return Instant.ofEpochMilli(time).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern(pattern));
+    }
 }

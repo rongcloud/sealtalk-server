@@ -3,17 +3,22 @@ package com.rcloud.server.sealtalk.service;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.rcloud.server.sealtalk.constant.Constants;
+import com.rcloud.server.sealtalk.entity.Users;
 import com.rcloud.server.sealtalk.exception.RCloudHttpException;
 import com.rcloud.server.sealtalk.exception.ServiceException;
+import com.rcloud.server.sealtalk.param.FriendRouteParam;
 import com.rcloud.server.sealtalk.param.MsgRouteParam;
 import com.rcloud.server.sealtalk.param.MsgRouteParam.ChannelType;
+import com.rcloud.server.sealtalk.param.UserProfileRouteParam;
 import com.rcloud.server.sealtalk.rongcloud.RongCloudClient;
+import com.rcloud.server.sealtalk.util.N3d;
 import io.rong.messages.InfoNtfMessage;
 import io.rong.models.message.ChatroomMessage;
 import io.rong.models.message.GroupMessage;
 import io.rong.models.message.PrivateMessage;
 import io.rong.models.message.UltraGroupMessage;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.HashSet;
@@ -47,6 +52,8 @@ public class MsgCallbackService {
     private RongCloudClient rongCloudClient;
     @Autowired
     private UsersService usersService;
+    @Autowired
+    private FriendshipsService friendshipsService;
 
 
     private static final Cache<String, Long> WARNING_MSG_CACHE = Caffeine.newBuilder()
@@ -128,4 +135,51 @@ public class MsgCallbackService {
         }
         return null;
     }
+
+
+
+    public void userInfoUpdate(UserProfileRouteParam routeParam) throws Exception {
+        var userName = routeParam.userName();
+        var portraitUri = routeParam.portraitUri();
+        if (StringUtils.isBlank(userName) && StringUtils.isBlank(portraitUri)) {
+            return;
+        }
+        int userId;
+        try {
+            userId = N3d.decode(routeParam.getUserId());
+        } catch (Exception ignore) {
+            return;
+        }
+        var u = usersService.queryById(userId);
+        if (u != null) {
+            log.info("RC User Profile Route: [{}] [{}] [{}] [{}]", routeParam.getUserId(), userId, userName, portraitUri);
+            var updateU = new Users();
+            updateU.setId(userId);
+            updateU.setNickname(userName);
+            updateU.setPortraitUri(portraitUri);
+            usersService.updateUserInfo(updateU);
+        }
+    }
+
+    public void friendRoute(FriendRouteParam routeParam) throws Exception {
+
+        if (routeParam == null || (routeParam.getEventType() != 1 && routeParam.getEventType() != 5)) {
+            return;
+        }
+        int userId;
+        int friendId;
+        try {
+            userId = N3d.decode(routeParam.getUserId());
+            friendId = N3d.decode(routeParam.getToUserId());
+        } catch (Exception ignore) {
+            return;
+        }
+        var u = usersService.queryById(userId);
+        var fu = usersService.queryById(friendId);
+        if (u != null && fu != null) {
+            log.info("RC Friend Route: [{}] [{}] [{}] [{}] [{}]", routeParam.getUserId(), userId, routeParam.getToUserId(), friendId, routeParam.getEventType());
+            friendshipsService.addFriend(userId, friendId);
+        }
+    }
+
 }

@@ -7,6 +7,7 @@ import com.rcloud.server.sealtalk.exception.RCloudHttpException;
 import com.rcloud.server.sealtalk.model.JwtTokenResult;
 import com.rcloud.server.sealtalk.model.dto.RCBotDTO;
 import com.rcloud.server.sealtalk.model.dto.RCBotDTO.Integration;
+import com.rcloud.server.sealtalk.rongcloud.message.RCUserProfile;
 import com.rcloud.server.sealtalk.service.HttpService;
 import com.rcloud.server.sealtalk.util.JacksonUtil;
 import com.rcloud.server.sealtalk.util.RongCloudApiUtil;
@@ -34,17 +35,25 @@ import io.rong.models.message.MentionMessage;
 import io.rong.models.message.PrivateMessage;
 import io.rong.models.message.SystemMessage;
 import io.rong.models.message.UltraGroupMessage;
-import io.rong.models.response.BlackListResult;
+import io.rong.models.profile.CreateEntrustGroupModel;
+import io.rong.models.profile.EntrustGroupModel;
+import io.rong.models.profile.FriendModel;
+import io.rong.models.profile.FriendProfileModel;
+import io.rong.models.profile.ImportEntrustGroupModel;
+import io.rong.models.profile.QuitEntrustGroupModel;
+import io.rong.models.profile.TransferOwnerModel;
+import io.rong.models.profile.UserProfileModel;
 import io.rong.models.response.ChatAgentResult;
 import io.rong.models.response.TokenResult;
-import io.rong.models.response.UserResult;
 import io.rong.models.ultragroup.UltraGroupMember;
 import io.rong.models.ultragroup.UltraGroupModel;
 import io.rong.models.user.UserIdListModel;
 import io.rong.models.user.UserModel;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import lombok.extern.slf4j.Slf4j;
@@ -110,15 +119,25 @@ public class RongCloudClient implements InitializingBean {
 
     public Result updateUser(String userId, String name, String portrait) throws RCloudHttpException {
         return RCExecuteWrapper.executeSDK(()->{
-            UserModel user = new UserModel().setId(userId).setName(name).setPortrait(portrait);
-            return User.update(user);
+            RCUserProfile userProfile = new RCUserProfile();
+            userProfile.setName(name);
+            userProfile.setPortraitUri(portrait);
+            UserProfileModel profile = new UserProfileModel();
+            profile.setUserId(userId);
+            profile.setUserProfile(userProfile.toJsonString());
+            return rongCloud.entrustUser.setProfile(profile);
         });
     }
 
-    public UserResult getUserInfo(String userId) throws RCloudHttpException {
+
+    public Result updateUserUniqueId(String userId, String uniqueId) throws RCloudHttpException {
         return RCExecuteWrapper.executeSDK(()->{
-            UserModel user = new UserModel().setId(userId);
-            return User.get(user);
+            RCUserProfile userProfile = new RCUserProfile();
+            userProfile.setUniqueId(uniqueId);
+            UserProfileModel profile = new UserProfileModel();
+            profile.setUserId(userId);
+            profile.setUserProfile(userProfile.toJsonString());
+            return rongCloud.entrustUser.setProfile(profile);
         });
     }
 
@@ -127,10 +146,6 @@ public class RongCloudClient implements InitializingBean {
             UserModel[] blacks = targetIds.stream().map(id -> new UserModel().setId(id)).toList().toArray(new UserModel[0]);
             return BlackList.add(new UserModel().setId(userId).setBlacklist(blacks));
         });
-    }
-
-    public BlackListResult queryUserBlackList(String userId) throws RCloudHttpException {
-        return RCExecuteWrapper.executeSDK(() -> BlackList.getList(new UserModel().setId(userId)));
     }
 
 
@@ -185,12 +200,46 @@ public class RongCloudClient implements InitializingBean {
         RCExecuteWrapper.executeSDK(() -> rongCloud.message.chatroom.send(message));
     }
 
-    public void createGroup(String groupId,  String name, List<String> memberIds) throws RCloudHttpException {
+
+    public void addFriend(String userId, String friendId)  throws RCloudHttpException {
         RCExecuteWrapper.executeSDK(() -> {
-            GroupModel group = new GroupModel().setId(groupId)
-                    .setMembers(memberIds.stream().map(m -> new GroupMember().setId(m)).toList().toArray(new GroupMember[0]))
-                    .setName(name);
-            return rongCloud.group.create(group);
+            FriendModel friendModel = new FriendModel();
+            friendModel.setUserId(userId);
+            friendModel.setTargetId(friendId);
+            friendModel.setOptType(2);
+            return rongCloud.friend.add(friendModel);
+        });
+    }
+
+
+    public void delFriend(String userId, List<String> friendIds) throws RCloudHttpException {
+        RCExecuteWrapper.executeSDK(() -> rongCloud.friend.delete(userId, friendIds.toArray(new String[0])));
+    }
+
+    public void updateFriendProfile(String userId, String friendId, String remarkName, Map<String, String> extProfile) throws RCloudHttpException {
+        RCExecuteWrapper.executeSDK(() -> {
+            FriendProfileModel model = new FriendProfileModel();
+            model.setUserId(userId);
+            model.setTargetId(friendId);
+            model.setRemarkName(remarkName);
+            if (extProfile != null && !extProfile.isEmpty()) {
+                model.setFriendExtProfile(JacksonUtil.toJson(extProfile));
+            }
+            return rongCloud.friend.setProfile(model);
+        });
+    }
+
+
+    public void createGroup(String groupId, String name, String ownerId, List<String> memberIds) throws RCloudHttpException {
+        RCExecuteWrapper.executeSDK(() -> {
+            Set<String> m = new HashSet<>(memberIds);
+            m.remove(ownerId);
+            CreateEntrustGroupModel group = new CreateEntrustGroupModel();
+            group.setUserIds(m.toArray(new String[0]));
+            group.setGroupId(groupId);
+            group.setName(name);
+            group.setOwner(ownerId);
+            return rongCloud.entrustGroup.create(group);
         });
     }
 
@@ -199,18 +248,17 @@ public class RongCloudClient implements InitializingBean {
         RCExecuteWrapper.executeSDK(() -> rongCloud.message.history.clean(conversationType, fromUserId, targetId, msgTimestamp));
     }
 
-    public Result joinGroup(String groupId, String groupName, List<String> memberIds) throws RCloudHttpException {
-
-        return RCExecuteWrapper.executeSDK(() -> {
-            GroupModel group = new GroupModel().setId(groupId)
-                    .setMembers(memberIds.stream().map(m -> new GroupMember().setId(m)).toList().toArray(new GroupMember[0]))
-                    .setName(groupName);
-            return rongCloud.group.join(group);
-        });
+    public Result joinGroup(String groupId, List<String> memberIds) throws RCloudHttpException {
+        return RCExecuteWrapper.executeSDK(() -> rongCloud.entrustGroup.join(groupId, memberIds.toArray(new String[0])));
     }
 
     public void refreshGroupName(String groupId, String name) throws RCloudHttpException {
-        RCExecuteWrapper.executeSDK(() -> rongCloud.group.update(new GroupModel().setId(groupId).setName(name)));
+        RCExecuteWrapper.executeSDK(() -> {
+            EntrustGroupModel model = new EntrustGroupModel();
+            model.setGroupId(groupId);
+            model.setName(name);
+            return rongCloud.entrustGroup.updateProfile(model);
+        });
     }
 
     public Result addGroupWhitelist(String groupId, List<String> memberIds) throws RCloudHttpException {
@@ -230,20 +278,49 @@ public class RongCloudClient implements InitializingBean {
     }
 
 
-    public Result dismiss(String userId, String groupId) throws RCloudHttpException {
+    public Result dismiss(String groupId) throws RCloudHttpException {
+        return RCExecuteWrapper.executeSDK(() -> rongCloud.entrustGroup.dismiss(groupId));
+    }
+
+    public Result quitGroup(String groupId, List<String> memberIds) throws RCloudHttpException {
         return RCExecuteWrapper.executeSDK(() -> {
-            GroupModel group = new GroupModel().setId(groupId)
-                    .setMembers(List.of( new GroupMember().setId(userId)).toArray(new GroupMember[0]));
-            return rongCloud.group.dismiss(group);
+            QuitEntrustGroupModel quitModel = new QuitEntrustGroupModel();
+            quitModel.setGroupId(groupId);
+            quitModel.setUserIds(memberIds.toArray(new String[0]));
+            return rongCloud.entrustGroup.quit(quitModel);
         });
     }
 
-    public Result quitGroup(String groupId, String groupName, List<String> memberIds) throws RCloudHttpException {
+    public Result groupTransferOwner(String groupId, String newOwnerId) throws RCloudHttpException {
         return RCExecuteWrapper.executeSDK(() -> {
-            GroupModel group = new GroupModel().setId(groupId)
-                    .setMembers(memberIds.stream().map(m -> new GroupMember().setId(m)).toList().toArray(new GroupMember[0]))
-                    .setName(groupName);
-            return rongCloud.group.quit(group);
+            TransferOwnerModel model = new TransferOwnerModel();
+            model.setGroupId(groupId);
+            model.setNewOwner(newOwnerId);
+            return rongCloud.entrustGroup.transferOwner(model);
+        });
+    }
+
+    public Result addManager(String groupId, List<String> managers) throws RCloudHttpException {
+        return RCExecuteWrapper.executeSDK(() -> rongCloud.entrustGroup.addManagers(groupId, managers.toArray(new String[0])));
+    }
+
+    public Result removeManager(String groupId, List<String> managers) throws RCloudHttpException {
+        return RCExecuteWrapper.executeSDK(() -> rongCloud.entrustGroup.removeManagers(groupId, managers.toArray(new String[0])));
+    }
+
+    public Result importEntrustGroup(String groupId, String groupName, String portraitUrl, String ownerId) throws RCloudHttpException {
+        return RCExecuteWrapper.executeSDK(() -> {
+            ImportEntrustGroupModel model = new ImportEntrustGroupModel();
+            model.setGroupId(groupId);
+            model.setName(groupName);
+            model.setOwner(ownerId);
+
+            if (StringUtils.isNotBlank(portraitUrl)){
+                Map<String, String> profile = new HashMap<>();
+                profile.put("portraitUrl",portraitUrl);
+                model.setGroupProfile(profile);
+            }
+            return rongCloud.entrustGroup.importGroup(model);
         });
     }
 

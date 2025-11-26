@@ -38,7 +38,7 @@
     </delete>
 
     <delete id="deleteByUserIdOrFriendId">
-        delete from blacklists where userId=#{userId} or friendId=#{friendId}
+        delete from blacklists where userId=#{userId} or friendId=#{userId}
     </delete>
 
   <select id="selectBlackListsWithFriendUsers" resultMap="withUserResultMap">

@@ -24,4 +24,7 @@ public interface FriendshipsMapper {
     List<Friendships> selectByUserIdAndFriendIds(@Param("userId") Integer userId, @Param("friendIds") List<Integer> friendIds);
 
     int updateStatusByUserIdAndFriendIds(@Param("userId") Integer userId, @Param("friendIds") List<Integer> friendIds, @Param("status") Integer status);
+
+
+    List<Friendships> scanById(@Param("id") Integer id, @Param("limit") int limit);
 }
